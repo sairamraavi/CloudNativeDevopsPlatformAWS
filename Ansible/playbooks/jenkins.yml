@@ -1,0 +1,16 @@
+
+---
+- name: Configure Jenkins CI/CD controller
+  hosts: jenkins
+  become: true
+  gather_facts: true
+
+  roles:
+    - common
+    - java
+    - jenkins
+    - docker
+    - awscli
+    - kubectl
+    - terraform
+    - helm

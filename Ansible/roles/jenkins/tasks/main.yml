@@ -1,0 +1,36 @@
+---
+- name: Ensure APT keyring directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download Jenkins repository signing key
+  ansible.builtin.get_url:
+    url: "{{ jenkins_repository_key_url }}"
+    dest: /etc/apt/keyrings/jenkins.asc
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Configure Jenkins LTS APT repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/jenkins.asc] {{ jenkins_repository_url }} binary/"
+    filename: jenkins
+    state: present
+    update_cache: true
+
+- name: Install Jenkins
+  ansible.builtin.apt:
+    name: jenkins
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Enable and start Jenkins
+  ansible.builtin.systemd_service:
+    name: "{{ jenkins_service_name }}"
+    enabled: true
+    state: started

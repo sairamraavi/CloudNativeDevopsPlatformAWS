@@ -1,0 +1,19 @@
+---
+- name: Install Java runtime
+  ansible.builtin.apt:
+    name: "{{ java_package }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Verify Java installation
+  ansible.builtin.command:
+    argv:
+      - java
+      - -version
+  register: java_version_result
+  changed_when: false
+
+- name: Display Java version
+  ansible.builtin.debug:
+    msg: "{{ java_version_result.stderr_lines | default(java_version_result.stdout_lines) }}"

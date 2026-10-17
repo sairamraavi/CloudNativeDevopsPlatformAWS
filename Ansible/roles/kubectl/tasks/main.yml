@@ -1,0 +1,26 @@
+---
+- name: Ensure kubectl version is explicitly configured
+  ansible.builtin.assert:
+    that:
+      - kubectl_version | length > 0
+      - kubectl_version is match('^v[0-9]+\\.[0-9]+\\.[0-9]+$')
+    fail_msg: >-
+      Set kubectl_version to a version compatible with the target EKS cluster,
+      for example v1.XX.Y, before running this role.
+
+- name: Download kubectl binary
+  ansible.builtin.get_url:
+    url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/{{ kubectl_arch }}/kubectl"
+    dest: "{{ kubectl_install_path }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Verify kubectl installation
+  ansible.builtin.command:
+    argv:
+      - "{{ kubectl_install_path }}"
+      - version
+      - --client
+      - --output=yaml
+  changed_when: false
