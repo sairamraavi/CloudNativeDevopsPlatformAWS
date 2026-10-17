@@ -1,0 +1,56 @@
+---
+- name: Ensure Terraform version is explicitly configured
+  ansible.builtin.assert:
+    that:
+      - terraform_version | length > 0
+      - terraform_version is match('^[0-9]+\\.[0-9]+\\.[0-9]+$')
+    fail_msg: >-
+      Set terraform_version to the version selected by the team before
+      running this role.
+
+- name: Install unzip for Terraform
+  ansible.builtin.apt:
+    name: unzip
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create temporary Terraform download directory
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: terraform
+  register: terraform_tmp
+
+- name: Download Terraform archive
+  ansible.builtin.get_url:
+    url: "https://releases.hashicorp.com/terraform/{{ terraform_version }}/terraform_{{ terraform_version }}_linux_{{ terraform_arch }}.zip"
+    dest: "{{ terraform_tmp.path }}/terraform.zip"
+    mode: "0644"
+
+- name: Extract Terraform binary
+  ansible.builtin.unarchive:
+    src: "{{ terraform_tmp.path }}/terraform.zip"
+    dest: "{{ terraform_tmp.path }}"
+    remote_src: true
+    creates: "{{ terraform_tmp.path }}/terraform"
+
+- name: Install Terraform binary
+  ansible.builtin.copy:
+    src: "{{ terraform_tmp.path }}/terraform"
+    dest: "{{ terraform_install_dir }}/terraform"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Verify Terraform installation
+  ansible.builtin.command:
+    argv:
+      - "{{ terraform_install_dir }}/terraform"
+      - version
+  changed_when: false
+
+- name: Remove temporary Terraform files
+  ansible.builtin.file:
+    path: "{{ terraform_tmp.path }}"
+    state: absent

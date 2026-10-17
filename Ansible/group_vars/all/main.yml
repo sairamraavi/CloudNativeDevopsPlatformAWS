@@ -1,0 +1,10 @@
+---
+# Set these to versions approved by the capstone team.
+# kubectl should be within one minor version of the EKS control plane.
+kubectl_version: ""
+
+# Match the version used by the Terraform code in the team repository.
+terraform_version: ""
+
+# Leave empty to allow the Helm installer to select its default version.
+helm_version: ""
