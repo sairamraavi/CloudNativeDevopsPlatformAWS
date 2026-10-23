@@ -26,7 +26,7 @@ ENV NODE_OPTIONS=--max_old_space_size=768
 
 RUN npm run build
 
-FROM nginx:1.27-alpine AS production
+FROM nginx:stable-alpine AS production
 COPY --from=build /app/build /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
