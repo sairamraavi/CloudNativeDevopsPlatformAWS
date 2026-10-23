@@ -3,7 +3,7 @@ FROM node:24-alpine AS base
 WORKDIR /app/streamingService
 
 COPY streamingService/package*.json ./
-RUN npm install --production
+RUN npm ci --omit=dev
 
 COPY streamingService/. ./
 ENV NODE_ENV=production
