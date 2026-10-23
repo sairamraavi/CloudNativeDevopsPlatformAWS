@@ -1,8 +1,3 @@
-const getEnv = (key, fallback) => {
-  const value = process.env[key];
-  return value === undefined ? fallback : value;
-};
-
 export const AUTH_API_URL =
   process.env.REACT_APP_AUTH_API_URL || '/api';
 
