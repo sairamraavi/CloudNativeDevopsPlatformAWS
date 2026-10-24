@@ -5,7 +5,7 @@ variable "name_prefix" {
   validation {
     condition = (
       length(var.name_prefix) <= 40 &&
-      can(regex("^[a-z][a-z0-9]*$", var.name_prefix))
+      can(regex("^[a-z][a-z0-9-]*$", var.name_prefix))
     )
     error_message = "use a lowercase prefix starting with a letter at most 40 characters."
   }
