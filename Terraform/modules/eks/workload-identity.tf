@@ -13,7 +13,7 @@ locals {
 data "aws_iam_policy_document" "cni_assume_role" {
   statement {
     effect  = "Allow"
-    actions = ["sts:AssumeRoleWithIdentity"]
+    actions = ["sts:AssumeRoleWithWebIdentity"]
 
     principals {
       type = "Federated"
@@ -36,7 +36,7 @@ data "aws_iam_policy_document" "cni_assume_role" {
 resource "aws_iam_role" "cni" {
   name               = "${var.name_prefix}-eks-cni"
   description        = "Dedicated IPV4 VPC CNI role"
-  assume_role_policy = data.aws_iam_policy_document.cluster_assume_role.json
+  assume_role_policy = data.aws_iam_policy_document.cni_assume_role.json
   tags               = var.tags
 }
 resource "aws_iam_role_policy_attachment" "cni" {
