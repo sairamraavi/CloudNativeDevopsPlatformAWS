@@ -60,8 +60,8 @@ pipeline {
                       --namespace ingress-nginx \
                       --create-namespace \
                       --set controller.service.type=LoadBalancer \
-                      --set-string 'controller.service.annotations.service\.beta\.kubernetes\.io/aws-load-balancer-type=nlb' \
-                      --set-string 'controller.service.annotations.service\.beta\.kubernetes\.io/aws-load-balancer-scheme=internet-facing' \
+                      --set-string 'controller.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-type=nlb' \
+                      --set-string 'controller.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-scheme=internet-facing' \
                       --wait \
                       --timeout 10m
                 '''
