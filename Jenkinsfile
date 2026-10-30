@@ -23,6 +23,37 @@ pipeline {
             }
         }
 
+        stage('Install Dependencies and Run Tests') {
+            steps {
+                sh '''
+                    set -eu
+
+                    docker run --rm \
+                    --mount "type=bind,source=$WORKSPACE/StreamingApp/backend/adminService,target=/source,readonly" \
+                    --workdir /work \
+                    node:24-alpine \
+                    sh -ec '
+                        cp /source/package.json /source/package-lock.json .
+                        npm ci
+                        cp -R /source/middleware /source/test .
+                        npm test
+                    '
+
+                    docker run --rm \
+                    --mount "type=bind,source=$WORKSPACE/StreamingApp/frontend,target=/source,readonly" \
+                    --workdir /work \
+                    --env CI=true \
+                    node:24-alpine \
+                    sh -ec '
+                        cp /source/package.json /source/package-lock.json .
+                        npm ci
+                        cp -R /source/src /source/public .
+                        npm test -- --watchAll=false --runInBand
+                    '
+                '''
+            }
+        }
+
         stage('Verify Build Tools') {
             steps {
                 sh '''
