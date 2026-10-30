@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: frontend-hpa-load
+  namespace: streaming-app-dev
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 240
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      containers:
+        - name: load
+          image: 175200623108.dkr.ecr.ap-south-1.amazonaws.com/streamingapp-capstone-auth:05b5902e19e7-20261023204946
+          command: ["node", "-e"]
+          args:
+            - |
+              const http = require('http');
+              const end = Date.now() + 180000;
+              let started = 0, completed = 0, failed = 0;
+
+              function worker() {
+                if (Date.now() >= end || started >= 50000) return;
+                started++;
+                const req = http.get('http://frontend/', res => {
+                  res.resume();
+                  res.on('end', () => {
+                    completed++;
+                    if (res.statusCode !== 200) failed++;
+                    worker();
+                  });
+                });
+                req.setTimeout(5000, () => req.destroy());
+                req.on('error', () => {
+                  failed++;
+                  setTimeout(worker, 100);
+                });
+              }
+
+              for (let i = 0; i < 16; i++) worker();
+              const timer = setInterval(() => {
+                console.log(JSON.stringify({started, completed, failed}));
+              }, 15000);
+              timer.unref();
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi

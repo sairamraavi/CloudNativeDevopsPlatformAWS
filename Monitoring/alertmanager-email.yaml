@@ -1,0 +1,39 @@
+# Deployment template: replace __SES_SMTP_USERNAME__ in memory
+# using the username from Secret monitoring/alertmanager-ses-smtp.
+# Do not apply this file directly with the marker unchanged.
+# Never put the SMTP password in this file.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: capstone-email
+  namespace: monitoring
+spec:
+  route:
+    receiver: outlook-email
+    groupBy:
+      - namespace
+      - alertname
+    groupWait: 30s
+    groupInterval: 1m
+    repeatInterval: 12h
+    routes:
+      - receiver: discard
+        matchers:
+          - name: alertname
+            matchType: "=~"
+            value: "Watchdog|InfoInhibitor"
+
+  receivers:
+    - name: discard
+
+    - name: outlook-email
+      emailConfigs:
+        - to: sairamraavi@outlook.com
+          from: monitoring@sairamraavi.com
+          smarthost: email-smtp.ap-south-1.amazonaws.com:587
+          authUsername: "__SES_SMTP_USERNAME__"
+          authPassword:
+            name: alertmanager-ses-smtp
+            key: password
+          requireTLS: true
+          sendResolved: true

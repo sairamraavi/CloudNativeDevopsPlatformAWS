@@ -1,10 +1,11 @@
 image:
   registry: 175200623108.dkr.ecr.ap-south-1.amazonaws.com
-  tag: jenkins-3
+  tag: 05b5902e19e7-20261023204946
   pullPolicy: IfNotPresent
 
 frontend:
-  repository: streaming-frontend
+  repository: streamingapp-capstone-frontend
+  tag: 2f7c5a31fc31-20261023213813
   replicas: 1
   port: 80
   resources:
@@ -27,23 +28,32 @@ backend:
 
 services:
   auth:
-    repository: streaming-auth
+    repository: streamingapp-capstone-auth
+    serviceAccountName: streamingapp-auth
+    roleArn: ""
     port: 3001
     healthPath: /health
   streaming:
-    repository: streaming-streaming
+    repository: streamingapp-capstone-streaming
+    serviceAccountName: streamingapp-streaming
+    roleArn: ""
     port: 3002
     healthPath: /api/health
   admin:
-    repository: streaming-admin
+    repository: streamingapp-capstone-admin
+    serviceAccountName: streamingapp-admin
+    roleArn: ""
     port: 3003
     healthPath: /api/health
   chat:
-    repository: streaming-chat
+    repository: streamingapp-capstone-chat
+    serviceAccountName: streamingapp-chat
+    roleArn: ""
     port: 3004
     healthPath: /api/health
 
 mongodb:
+  enabled: false
   image: mongo:6
   port: 27017
   storageSize: 1Gi
@@ -56,19 +66,25 @@ mongodb:
       memory: 512Mi
 
 app:
-  mongoUri: mongodb://mongodb:27017/streamingapp
-  secretName: streamingapp-secrets
-  clientUrls: http://a8aaf839ed39d4f16b917d583fc1654d-673853213.ap-south-1.elb.amazonaws.com
-  streamingPublicUrl: http://a8aaf839ed39d4f16b917d583fc1654d-673853213.ap-south-1.elb.amazonaws.com
+  secretName: streamingapp-application
+  clientUrls: https://streaming.sairamraavi.com
+  streamingPublicUrl: https://streaming.sairamraavi.com
   awsRegion: ap-south-1
-  s3Bucket: streamingapp-175200623108-ap-south-1
+  s3Bucket: streamingapp-media-5ec46eb6f6a44d20df3a94ae11
 
 ingress:
-  enabled: true
-  className: nginx
+  enabled: false
+  className: alb
+  host: streaming.sairamraavi.com
+  certificateArn: ""
 
 autoscaling:
   enabled: true
+  workloads:
+    - auth
+    - streaming
+    - admin
+    - frontend
   minReplicas: 1
   maxReplicas: 3
   targetCPUUtilizationPercentage: 70

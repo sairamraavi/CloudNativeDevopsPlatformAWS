@@ -1,0 +1,144 @@
+# EKS manages these control-plane components.
+# Their internal metrics endpoints are not exposed for this setup.
+kubeEtcd:
+  enabled: false
+
+kubeControllerManager:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
+
+kubeProxy:
+  enabled: false
+
+defaultRules:
+  rules:
+    etcd: false
+    kubeControllerManager: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeProxy: false
+
+prometheus:
+  service:
+    type: ClusterIP
+
+  ingress:
+    enabled: false
+
+  prometheusSpec:
+    replicas: 1
+    retention: 24h
+    retentionSize: "3GB"
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1536Mi
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: capstone-gp3-encrypted
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 5Gi
+
+alertmanager:
+  service:
+    type: ClusterIP
+
+  ingress:
+    enabled: false
+
+  alertmanagerSpec:
+    alertmanagerConfiguration:
+      name: capstone-email
+    replicas: 1
+    retention: 24h
+
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: capstone-gp3-encrypted
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+
+grafana:
+  enabled: true
+
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+
+  service:
+    type: ClusterIP
+
+  ingress:
+    enabled: false
+
+  deploymentStrategy:
+    type: Recreate
+
+  persistence:
+    enabled: true
+    type: pvc
+    storageClassName: capstone-gp3-encrypted
+    accessModes:
+      - ReadWriteOnce
+    size: 2Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 384Mi
+
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi

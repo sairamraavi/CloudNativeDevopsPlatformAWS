@@ -4,13 +4,20 @@ kind: Ingress
 metadata:
   name: streamingapp
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: {{ required "Set ingress.certificateArn when enabling ingress" .Values.ingress.certificateArn | quote }}
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/success-codes: "200"
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=120
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
-    - http:
+    - host: {{ required "Set ingress.host when enabling ingress" .Values.ingress.host | quote }}
+      http:
         paths:
           - path: /api/admin
             pathType: Prefix
