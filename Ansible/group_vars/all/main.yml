@@ -1,10 +1,7 @@
 ---
-# Set these to versions approved by the capstone team.
-# kubectl should be within one minor version of the EKS control plane.
-kubectl_version: ""
+kubectl_version: "v1.36.2"
+terraform_version: "1.15.8"
+helm_version: "v4.2.3"
 
-# Match the version used by the Terraform code in the team repository.
-terraform_version: ""
-
-# Leave empty to allow the Helm installer to select its default version.
-helm_version: ""
+helm_install_script_url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4
+helm_install_script_path: /tmp/get-helm-4
