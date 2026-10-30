@@ -46,3 +46,6 @@ terraform.rc
 
 # Terraform saved plans
 *.tfplan
+
+# Sonarcube
+.scannerwork/

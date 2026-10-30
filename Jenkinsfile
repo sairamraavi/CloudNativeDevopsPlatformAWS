@@ -54,6 +54,25 @@ pipeline {
             }
         }
 
+        stage('SonarQube Analysis and Quality Gate') {
+            steps {
+                script {
+                    def scannerHome = tool 'capstone-sonar-scanner'
+
+                    withEnv(["SONAR_SCANNER_HOME=${scannerHome}"]) {
+                        withSonarQubeEnv('capstone-sonarqube') {
+                            sh '''
+                                set +x
+                                set -eu
+                                export SONAR_TOKEN="$SONAR_AUTH_TOKEN"
+                                "$SONAR_SCANNER_HOME/bin/sonar-scanner"
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
         stage('Verify Build Tools') {
             steps {
                 sh '''
