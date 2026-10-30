@@ -3,7 +3,9 @@ kind: PersistentVolumeClaim
 metadata:
   name: mongodb-data
 spec:
-  storageClassName: gp2
+  {{- if .Values.mongodb.storageClassName }}
+  storageClassName: {{ .Values.mongodb.storageClassName }}
+  {{- end }}
   accessModes:
     - ReadWriteOnce
   resources:

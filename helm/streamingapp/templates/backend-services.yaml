@@ -14,7 +14,7 @@ spec:
       labels:
         app: {{ $name }}
     spec:
-      serviceAccountName: streamingapp-s3
+      serviceAccountName: {{ index $.Values.serviceAccounts $name }}
       containers:
         - name: {{ $name }}
           image: "{{ $.Values.image.registry }}/{{ $service.repository }}:{{ $.Values.image.tag }}"
@@ -42,6 +42,10 @@ spec:
               value: ""
             - name: STREAMING_PUBLIC_URL
               value: {{ $.Values.app.streamingPublicUrl | quote }}
+              {{- if eq $name "auth" }}
+            - name: HOST
+              value: {{ printf "%s/api" $.Values.app.clientUrls | quote }}
+              {{- end }}
           readinessProbe:
             httpGet:
               path: {{ $service.healthPath | quote }}

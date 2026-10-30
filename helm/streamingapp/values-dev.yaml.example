@@ -1,0 +1,33 @@
+# Copy to values-dev.yaml and populate using Terraform outputs
+# and your environment-specific deployment configuration.
+
+image:
+  registry: REPLACE_WITH_ECR_REGISTRY
+  tag: REPLACE_WITH_IMAGE_TAG
+
+frontend:
+  repository: streamingapp-capstone-frontend
+
+services:
+  auth:
+    repository: streamingapp-capstone-auth
+  streaming:
+    repository: streamingapp-capstone-streaming
+  admin:
+    repository: streamingapp-capstone-admin
+  chat:
+    repository: streamingapp-capstone-chat
+
+app:
+  awsRegion: REPLACE_WITH_AWS_REGION
+  s3Bucket: REPLACE_WITH_APPLICATION_BUCKET
+  clientUrls: REPLACE_WITH_FRONTEND_URL
+  streamingPublicUrl: REPLACE_WITH_STREAMING_URL
+
+ingress:
+  enabled: true
+  className: nginx
+  host: REPLACE_WITH_APPLICATION_HOSTNAME
+  tls:
+    enabled: false
+    secretName: ""

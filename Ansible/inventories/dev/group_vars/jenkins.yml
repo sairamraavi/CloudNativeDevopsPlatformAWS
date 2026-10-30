@@ -1,0 +1,20 @@
+---
+# AWS Systems Manager connection
+ansible_connection: amazon.aws.aws_ssm
+ansible_aws_ssm_region: ap-south-1
+ansible_aws_ssm_bucket_name: streamingapp-capstone-dev-ansible-ssm
+ansible_python_interpreter: /usr/bin/python3
+
+# Jenkins runtime
+java_package: openjdk-21-jre
+
+# Terraform
+terraform_version: "1.16.6"
+terraform_arch: amd64
+
+# kubectl
+kubectl_version: "v1.36.2"
+kubectl_arch: amd64
+
+# Helm
+helm_version: "v3.22.1"

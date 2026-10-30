@@ -46,3 +46,40 @@ terraform.rc
 
 # Terraform saved plans
 *.tfplan
+# Local Terraform backend configuration (use committed .example templates)
+**/backend.hcl
+
+# Terraform plan files
+*.tfplan
+tfplan
+*.plan
+
+# Local environment files and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.secret
+*.secret.*
+vault-password-file
+
+# Private keys and certificates
+*.pem
+*.p12
+*.pfx
+
+# Ansible retry files
+*.retry
+
+# Allow safe Terraform example variable files
+!*.tfvars.example
+!*.tfvars.json.example
+helm/streamingapp/values-dev.yaml
+
+# Local project audit files
+project-audit-*.log
+project-audit.sh
+
+# Local Terraform environment and state
+Terraform/environments/dev/dev.auto.tfvars
+Terraform/persistent/.terraform/

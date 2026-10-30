@@ -105,10 +105,12 @@ variable "node_max_size_per_az" {
 
 variable "addon_versions" {
   description = "Explicit add-on versions compatible with the selected Kubernetes version."
+
   type = object({
     vpc_cni            = string
     coredns            = string
     kube_proxy         = string
     pod_identity_agent = string
+    ebs_csi            = string
   })
 }

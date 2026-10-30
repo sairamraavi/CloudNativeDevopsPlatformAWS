@@ -1,10 +1,22 @@
 image:
-  registry: 175200623108.dkr.ecr.ap-south-1.amazonaws.com
-  tag: jenkins-3
+  registry: ""
+  tag: ""
   pullPolicy: IfNotPresent
 
+serviceAccounts:
+  create: true
+  auth: streamingapp-auth
+  streaming: streamingapp-streaming-s3
+  admin: streamingapp-admin-s3
+  chat: streamingapp-chat
+
+storageClass:
+  create: true
+  name: streamingapp-gp3
+  default: false
+
 frontend:
-  repository: streaming-frontend
+  repository: ""
   replicas: 1
   port: 80
   resources:
@@ -27,19 +39,19 @@ backend:
 
 services:
   auth:
-    repository: streaming-auth
+    repository: ""
     port: 3001
     healthPath: /health
   streaming:
-    repository: streaming-streaming
+    repository: ""
     port: 3002
     healthPath: /api/health
   admin:
-    repository: streaming-admin
+    repository: ""
     port: 3003
     healthPath: /api/health
   chat:
-    repository: streaming-chat
+    repository: ""
     port: 3004
     healthPath: /api/health
 
@@ -47,6 +59,7 @@ mongodb:
   image: mongo:6
   port: 27017
   storageSize: 1Gi
+  storageClassName: streamingapp-gp3
   resources:
     requests:
       cpu: 100m
@@ -58,14 +71,18 @@ mongodb:
 app:
   mongoUri: mongodb://mongodb:27017/streamingapp
   secretName: streamingapp-secrets
-  clientUrls: http://a8aaf839ed39d4f16b917d583fc1654d-673853213.ap-south-1.elb.amazonaws.com
-  streamingPublicUrl: http://a8aaf839ed39d4f16b917d583fc1654d-673853213.ap-south-1.elb.amazonaws.com
-  awsRegion: ap-south-1
-  s3Bucket: streamingapp-175200623108-ap-south-1
+  clientUrls: ""
+  streamingPublicUrl: ""
+  awsRegion: ""
+  s3Bucket: ""
 
 ingress:
   enabled: true
   className: nginx
+  host: ""
+  tls:
+    enabled: false
+    secretName: ""
 
 autoscaling:
   enabled: true

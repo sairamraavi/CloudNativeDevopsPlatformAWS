@@ -13,21 +13,21 @@ resource "terraform_data" "eks_network_guard" {
 
   lifecycle {
     precondition {
-      condition     = var.nat_mode == "per_az"
-      error_message = "This deployment requires nat_mode=per_az for  private-node egress in both Azs."
+      condition     = contains(["single", "per_az"], var.nat_mode)
+      error_message = "EKS private nodes require outbound connectivity. Choose single or per_az NAT mode."
     }
   }
 }
 
 module "eks" {
   source              = "../../modules/eks"
-  name_prefix         = "streamingapp-capstone-dev"
+  name_prefix         = local.name_prefix
   kubernetes_version  = "1.36"
   private_subnet_ids  = module.networking.private_subnet_ids
   admin_role_arn      = var.eks_admin_role_arn
   public_access_cidrs = var.eks_public_access_cidrs
 
-  node_instance_types  = ["t3.large"]
+  node_instance_types  = var.node_instance_types
   node_max_size_per_az = 2
   log_retention_days   = 7
   addon_versions = {
@@ -35,12 +35,9 @@ module "eks" {
     coredns            = "v1.14.7-eksbuild.11"
     kube_proxy         = "v1.36.0-eksbuild.48"
     pod_identity_agent = "v1.4.1-eksbuild.2"
+    ebs_csi            = "v1.67.2-eksbuild.1"
   }
-  tags = {
-    Project     = "streamingapp-capstone"
-    Environment = "dev"
-    ManagedBy   = "Terraform"
-  }
+  tags       = local.common_tags
   depends_on = [module.networking, terraform_data.eks_network_guard, ]
 }
 

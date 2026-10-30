@@ -18,7 +18,7 @@ variable "services" {
   default = [
     "frontend",
     "auth",
-    "steaming",
+    "streaming",
     "admin",
     "chat"
   ]

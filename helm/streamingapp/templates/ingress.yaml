@@ -8,9 +8,18 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 spec:
-  ingressClassName: {{ .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className | quote }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ required "ingress.host is required when TLS is enabled" .Values.ingress.host | quote }}
+      secretName: {{ required "ingress.tls.secretName is required when TLS is enabled" .Values.ingress.tls.secretName | quote }}
+  {{- end }}
   rules:
-    - http:
+    - {{- if .Values.ingress.host }}
+      host: {{ .Values.ingress.host | quote }}
+      {{- end }}
+      http:
         paths:
           - path: /api/admin
             pathType: Prefix

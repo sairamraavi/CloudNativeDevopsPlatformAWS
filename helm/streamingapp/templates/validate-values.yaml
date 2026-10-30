@@ -1,0 +1,29 @@
+{{- $requiredValues := dict
+  "image.registry" .Values.image.registry
+  "image.tag" .Values.image.tag
+  "frontend.repository" .Values.frontend.repository
+  "app.awsRegion" .Values.app.awsRegion
+  "app.s3Bucket" .Values.app.s3Bucket
+}}
+
+{{- range $name, $value := $requiredValues }}
+  {{- if or (not $value) (contains "REPLACE_WITH" ($value | toString)) }}
+    {{- fail (printf "%s must contain a valid environment-specific value" $name) }}
+  {{- end }}
+{{- end }}
+
+{{- range $name, $service := .Values.services }}
+  {{- if or (not $service.repository) (contains "REPLACE_WITH" ($service.repository | toString)) }}
+    {{- fail (printf "services.%s.repository must be configured" $name) }}
+  {{- end }}
+{{- end }}
+
+{{- if and .Values.ingress.enabled .Values.ingress.host }}
+  {{- if contains "REPLACE_WITH" .Values.ingress.host }}
+    {{- fail "ingress.host must not contain a placeholder" }}
+  {{- end }}
+{{- end }}
+
+{{- if and .Values.ingress.tls.enabled (not .Values.ingress.host) }}
+  {{- fail "ingress.host is required when TLS is enabled" }}
+{{- end }}

@@ -1,0 +1,7 @@
+# Replace these placeholders with values for your AWS account and environment.
+expected_account_id      = "REPLACE_WITH_12_DIGIT_AWS_ACCOUNT_ID"
+aws_region               = "REPLACE_WITH_YOUR_AWS_REGION"
+availability_zones       = ["REPLACE_WITH_AZ_1", "REPLACE_WITH_AZ_2"]
+nat_mode                 = "per_az"
+eks_admin_role_arn       = "arn:aws:iam::REPLACE_WITH_12_DIGIT_AWS_ACCOUNT_ID:role/REPLACE_WITH_EKS_ADMIN_ROLE"
+eks_public_access_cidrs  = ["REPLACE_WITH_YOUR_PUBLIC_IP/32"]

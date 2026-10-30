@@ -22,3 +22,8 @@ output "node_role_arn" {
   description = "IAM role for managed worker nodes."
   value       = aws_iam_role.nodes.arn
 }
+
+output "cluster_arn" {
+  description = "EKS cluster ARN for workload identity trust policies."
+  value       = aws_eks_cluster.this.arn
+}

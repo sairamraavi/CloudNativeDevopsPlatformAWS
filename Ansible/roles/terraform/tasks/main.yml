@@ -3,10 +3,8 @@
   ansible.builtin.assert:
     that:
       - terraform_version | length > 0
-      - terraform_version is match('^[0-9]+\\.[0-9]+\\.[0-9]+$')
-    fail_msg: >-
-      Set terraform_version to the version selected by the team before
-      running this role.
+      - terraform_version is match('^[0-9]+\.[0-9]+\.[0-9]+$')
+    fail_msg: "Set terraform_version to the version approved by the team."
 
 - name: Install unzip for Terraform
   ansible.builtin.apt:
@@ -15,42 +13,63 @@
     update_cache: true
     cache_valid_time: 3600
 
-- name: Create temporary Terraform download directory
-  ansible.builtin.tempfile:
+- name: Create Terraform download directory
+  ansible.builtin.file:
+    path: /tmp/terraform-install
     state: directory
-    suffix: terraform
-  register: terraform_tmp
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Check installed Terraform version
+  ansible.builtin.command:
+    argv:
+      - "{{ terraform_install_dir }}/terraform"
+      - version
+  register: terraform_installed
+  changed_when: false
+  failed_when: false
 
 - name: Download Terraform archive
   ansible.builtin.get_url:
     url: "https://releases.hashicorp.com/terraform/{{ terraform_version }}/terraform_{{ terraform_version }}_linux_{{ terraform_arch }}.zip"
-    dest: "{{ terraform_tmp.path }}/terraform.zip"
+    dest: "/tmp/terraform-install/terraform_{{ terraform_version }}.zip"
     mode: "0644"
+  when: >-
+    terraform_installed.rc != 0 or
+    ('Terraform v' ~ terraform_version) not in terraform_installed.stdout
 
 - name: Extract Terraform binary
   ansible.builtin.unarchive:
-    src: "{{ terraform_tmp.path }}/terraform.zip"
-    dest: "{{ terraform_tmp.path }}"
+    src: "/tmp/terraform-install/terraform_{{ terraform_version }}.zip"
+    dest: /tmp/terraform-install
     remote_src: true
-    creates: "{{ terraform_tmp.path }}/terraform"
+  when: >-
+    terraform_installed.rc != 0 or
+    ('Terraform v' ~ terraform_version) not in terraform_installed.stdout
 
 - name: Install Terraform binary
   ansible.builtin.copy:
-    src: "{{ terraform_tmp.path }}/terraform"
+    src: /tmp/terraform-install/terraform
     dest: "{{ terraform_install_dir }}/terraform"
     remote_src: true
     owner: root
     group: root
     mode: "0755"
+  when: >-
+    terraform_installed.rc != 0 or
+    ('Terraform v' ~ terraform_version) not in terraform_installed.stdout
 
 - name: Verify Terraform installation
   ansible.builtin.command:
     argv:
       - "{{ terraform_install_dir }}/terraform"
       - version
+  register: terraform_version_check
   changed_when: false
 
-- name: Remove temporary Terraform files
-  ansible.builtin.file:
-    path: "{{ terraform_tmp.path }}"
-    state: absent
+- name: Confirm the expected Terraform version
+  ansible.builtin.assert:
+    that:
+      - "'Terraform v' ~ terraform_version in terraform_version_check.stdout"
+    fail_msg: "Installed Terraform version does not match the configured version."
