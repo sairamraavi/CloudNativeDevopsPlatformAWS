@@ -22,3 +22,8 @@ output "node_role_arn" {
   description = "IAM role for managed worker nodes."
   value       = aws_iam_role.nodes.arn
 }
+
+output "oidc_provider_arn" {
+  description = "IAM OIDC provider ARN for workload trust policies."
+  value       = aws_iam_openid_connect_provider.cluster.arn
+}

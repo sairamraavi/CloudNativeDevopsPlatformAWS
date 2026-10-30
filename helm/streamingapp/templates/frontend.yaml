@@ -3,7 +3,9 @@ kind: Deployment
 metadata:
   name: frontend
 spec:
+  {{- if not (and .Values.autoscaling.enabled (has "frontend" .Values.autoscaling.workloads)) }}
   replicas: {{ .Values.frontend.replicas }}
+  {{- end }}
   selector:
     matchLabels:
       app: frontend
@@ -14,7 +16,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: "{{ .Values.image.registry }}/{{ .Values.frontend.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.registry }}/{{ .Values.frontend.repository }}:{{ .Values.frontend.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.frontend.port }}

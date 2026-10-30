@@ -1,3 +1,4 @@
+{{- if .Values.mongodb.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -54,3 +55,4 @@ spec:
   ports:
     - port: {{ .Values.mongodb.port }}
       targetPort: {{ .Values.mongodb.port }}
+{{- end }}
