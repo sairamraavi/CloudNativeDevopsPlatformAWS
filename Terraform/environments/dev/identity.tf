@@ -120,6 +120,11 @@ resource "aws_eks_pod_identity_association" "streaming_s3" {
   ]
 }
 
+output "cloudwatch_agent_role_arn" {
+  description = "IAM role associated with the CloudWatch Agent ServiceAccount."
+  value       = module.eks.cloudwatch_agent_role_arn
+}
+
 output "admin_s3_role_arn" {
   description = "IAM role associated with the Admin S3 ServiceAccount."
   value       = aws_iam_role.admin_s3.arn

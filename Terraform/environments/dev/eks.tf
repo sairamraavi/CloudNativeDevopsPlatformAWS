@@ -31,11 +31,12 @@ module "eks" {
   node_max_size_per_az = 2
   log_retention_days   = 7
   addon_versions = {
-    vpc_cni            = "v1.22.4-eksbuild.3"
-    coredns            = "v1.14.7-eksbuild.11"
-    kube_proxy         = "v1.36.0-eksbuild.48"
-    pod_identity_agent = "v1.4.1-eksbuild.2"
-    ebs_csi            = "v1.67.2-eksbuild.1"
+    vpc_cni                  = "v1.22.4-eksbuild.3"
+    coredns                  = "v1.14.7-eksbuild.11"
+    kube_proxy               = "v1.36.0-eksbuild.48"
+    pod_identity_agent       = "v1.4.1-eksbuild.2"
+    ebs_csi                  = "v1.67.2-eksbuild.1"
+    cloudwatch_observability = "v7.0.0-eksbuild.1"
   }
   tags       = local.common_tags
   depends_on = [module.networking, terraform_data.eks_network_guard, ]

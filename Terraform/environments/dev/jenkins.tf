@@ -34,10 +34,6 @@ module "jenkins" {
   eks_cluster_arn = module.eks.cluster_arn
   tags            = local.common_tags
 
-  depends_on = [
-    module.networking,
-    module.eks
-  ]
 }
 
 # Allow Jenkins to reach the private EKS API endpoint over HTTPS.

@@ -45,3 +45,18 @@ resource "aws_eks_addon" "ebs_csi" {
     aws_eks_node_group.this,
   ]
 }
+resource "aws_eks_addon" "cloudwatch_observability" {
+  cluster_name  = aws_eks_cluster.this.name
+  addon_name    = "amazon-cloudwatch-observability"
+  addon_version = var.addon_versions.cloudwatch_observability
+
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "PRESERVE"
+
+  tags = var.tags
+
+  depends_on = [
+    aws_eks_pod_identity_association.cloudwatch_agent,
+    aws_eks_node_group.this
+  ]
+}

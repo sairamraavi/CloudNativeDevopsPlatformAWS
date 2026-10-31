@@ -27,3 +27,8 @@ output "cluster_arn" {
   description = "EKS cluster ARN for workload identity trust policies."
   value       = aws_eks_cluster.this.arn
 }
+
+output "cloudwatch_agent_role_arn" {
+  description = "IAM role ARN for the CloudWatch Agent Pod Identity association"
+  value       = aws_iam_role.cloudwatch_agent.arn
+}
