@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Drawer,
@@ -30,6 +31,7 @@ export const AdminDashboard = () => {
   const [currentView, setCurrentView] = useState('manage');
   const theme = useTheme();
   const { logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -60,6 +62,12 @@ export const AdminDashboard = () => {
             <ListItemText primary={item.text} />
           </ListItem>
         ))}
+        <ListItem button onClick={() => navigate('/browse')}>
+          <ListItemIcon>
+            <VideoLibrary />
+          </ListItemIcon>
+          <ListItemText primary="Back to StreamFlix" />
+        </ListItem>
         <ListItem button onClick={logout}>
           <ListItemIcon>
             <ExitToApp />
