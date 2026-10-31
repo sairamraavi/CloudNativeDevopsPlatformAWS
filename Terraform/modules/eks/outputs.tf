@@ -32,3 +32,8 @@ output "cloudwatch_agent_role_arn" {
   description = "IAM role ARN for the CloudWatch Agent Pod Identity association"
   value       = aws_iam_role.cloudwatch_agent.arn
 }
+output "cluster_certificate_authority_data" {
+  description = "Base64-encoded certificate authority data for the EKS cluster."
+  value       = aws_eks_cluster.this.certificate_authority[0].data
+}
+
