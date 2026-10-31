@@ -78,8 +78,8 @@ pipeline {
 
                     if (!env.LB_HOST) {
                         env.LB_HOST = 'streamingapp.local'
-                        env.APP_URL = "http://${env.LB_HOST}:18080"
-                        echo 'NLB unavailable. Using temporary hostname for deployment validation.'
+                        env.APP_URL = "http://${env.LB_HOST}"
+                        echo 'NLB hostname unavailable. Using the configured ingress host on HTTP port 80.'
                     } else {
                         env.APP_URL = "http://${env.LB_HOST}"
                     }
