@@ -155,7 +155,7 @@ pipeline {
 
                     docker build --pull --platform linux/amd64 \
                     --build-arg REACT_APP_AUTH_API_URL=/api \
-                    --build-arg REACT_APP_STREAMING_API_URL=/api/streaming \
+                    --build-arg REACT_APP_STREAMING_API_URL=/api \
                     --build-arg REACT_APP_STREAMING_PUBLIC_URL=https://streaming.sairamraavi.com \
                     --build-arg REACT_APP_ADMIN_API_URL=/api/admin \
                     --build-arg REACT_APP_CHAT_API_URL=/api/chat \
