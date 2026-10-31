@@ -18,5 +18,8 @@ resource "aws_cloudwatch_metric_alarm" "eks_node_cpu_high" {
 
   treat_missing_data = "notBreaching"
 
+  alarm_actions = [aws_sns_topic.eks_alerts.arn]
+  ok_actions    = [aws_sns_topic.eks_alerts.arn]
+
   tags = local.common_tags
 }
