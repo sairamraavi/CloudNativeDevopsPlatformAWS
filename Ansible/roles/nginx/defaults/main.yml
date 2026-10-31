@@ -1,0 +1,8 @@
+---
+jenkins_public_hostname: jenkins.sairamraavi.com
+sonarqube_public_hostname: sonarqube.sairamraavi.com
+
+capstone_nginx_sites:
+  - jenkins-metrics
+  - jenkins-webhook
+  - sonarqube

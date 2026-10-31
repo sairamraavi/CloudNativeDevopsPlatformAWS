@@ -1,4 +1,3 @@
-
 ---
 - name: Configure Jenkins CI/CD controller
   hosts: jenkins
@@ -14,3 +13,12 @@
     - kubectl
     - terraform
     - helm
+    - role: nginx
+      tags:
+        - nginx
+    - role: cloudwatch_agent
+      tags:
+        - cloudwatch_agent
+    - role: cloudflared
+      tags:
+        - cloudflared

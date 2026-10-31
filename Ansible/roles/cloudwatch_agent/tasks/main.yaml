@@ -1,0 +1,62 @@
+---
+- name: Require Ubuntu amd64 for this agent package
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['distribution'] == 'Ubuntu'
+      - ansible_facts['architecture'] == 'x86_64'
+    fail_msg: "This installation uses the Ubuntu amd64 CloudWatch package."
+
+- name: Check installed CloudWatch Agent package
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Download CloudWatch Agent when absent
+  ansible.builtin.get_url:
+    url: https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+    dest: /var/tmp/amazon-cloudwatch-agent.deb
+    owner: root
+    group: root
+    mode: "0644"
+  when: "'amazon-cloudwatch-agent' not in ansible_facts.packages"
+
+- name: Install CloudWatch Agent when absent
+  ansible.builtin.apt:
+    deb: /var/tmp/amazon-cloudwatch-agent.deb
+  when: "'amazon-cloudwatch-agent' not in ansible_facts.packages"
+  notify: Apply Jenkins CloudWatch configuration
+
+- name: Preserve Jenkins log collection configuration
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../Monitoring/cloudwatch/jenkins-agent.json"
+    dest: /opt/aws/amazon-cloudwatch-agent/etc/jenkins-logs.json
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+    validate: "/usr/bin/python3 -m json.tool %s"
+  notify: Apply Jenkins CloudWatch configuration
+
+- name: Check whether agent configuration has been activated
+  ansible.builtin.stat:
+    path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/file_jenkins-logs.json
+  register: capstone_cloudwatch_active_config
+
+- name: Activate configuration when no generated configuration exists
+  ansible.builtin.command:
+    argv:
+      - /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl
+      - -a
+      - fetch-config
+      - -m
+      - ec2
+      - -c
+      - file:/opt/aws/amazon-cloudwatch-agent/etc/jenkins-logs.json
+      - -s
+  when: not capstone_cloudwatch_active_config.stat.exists
+  changed_when: true
+
+- name: Enable and start CloudWatch Agent
+  ansible.builtin.systemd_service:
+    name: amazon-cloudwatch-agent
+    enabled: true
+    state: started
