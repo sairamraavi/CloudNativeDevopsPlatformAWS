@@ -23,3 +23,28 @@ resource "aws_cloudwatch_metric_alarm" "eks_node_cpu_high" {
 
   tags = local.common_tags
 }
+resource "aws_cloudwatch_metric_alarm" "eks_node_memory_high" {
+  alarm_name        = "${local.name_prefix}-eks-node-memory-high"
+  alarm_description = "EKS node memory utilization is above 80% for 15 minutes."
+
+  namespace   = "ContainerInsights"
+  metric_name = "node_memory_utilization"
+  statistic   = "Average"
+  period      = 300
+
+  dimensions = {
+    ClusterName = module.eks.cluster_name
+  }
+
+  comparison_operator = "GreaterThanThreshold"
+  threshold           = 80
+
+  evaluation_periods  = 3
+  datapoints_to_alarm = 3
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions = [aws_sns_topic.eks_alerts.arn]
+  ok_actions    = [aws_sns_topic.eks_alerts.arn]
+
+  tags = local.common_tags
+}
