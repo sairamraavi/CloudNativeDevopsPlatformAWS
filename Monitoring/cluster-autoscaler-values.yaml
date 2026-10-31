@@ -1,0 +1,38 @@
+fullnameOverride: cluster-autoscaler
+
+cloudProvider: aws
+awsRegion: ap-south-1
+
+autoDiscovery:
+  clusterName: streamingapp-capstone-dev-eks
+
+image:
+  repository: registry.k8s.io/autoscaling/cluster-autoscaler
+  tag: v1.36.0
+
+replicaCount: 1
+
+rbac:
+  create: true
+  serviceAccount:
+    create: true
+    name: cluster-autoscaler
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::175200623108:role/streamingapp-capstone-dev-autoscaler
+      eks.amazonaws.com/sts-regional-endpoints: '"true"'
+
+extraArgs:
+  v: "4"
+  expander: least-waste
+  balance-similar-node-groups: "true"
+  skip-nodes-with-local-storage: "true"
+  scale-down-delay-after-add: 10m
+  scale-down-unneeded-time: 10m
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

@@ -53,3 +53,6 @@ output "eks_cluster_endpoint" {
 output "eks_cluster_security_group_id" {
   value = module.eks.cluster_security_group_id
 }
+output "autoscaler_role_arn" {
+  value = module.eks.autoscaler_role_arn
+}
