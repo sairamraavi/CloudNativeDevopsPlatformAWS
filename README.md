@@ -72,4 +72,4 @@ Follow the [implementation sequence and evidence plan](Docs/architecture.md#6-pr
 | [Detailed architecture guide](Docs/architecture.md) | Design overview, diagram creation steps, connection approach, pipeline stages, and implementation plan |
 | [Complete connection register](Docs/architecture.md#9-complete-connection-register) | Every connector and its intended meaning |
 | [Design decisions to confirm](Docs/architecture.md#7-design-decisions-still-to-confirm) | Open choices to resolve before completing implementation |
-| [Documentation index](Docs/README.md) | Guidance for adding implementation steps and final-report evidence |
+| [Step-by-step setup guide](Docs/setup-process.md) | Ordered setup, verification, backup and teardown instructions |

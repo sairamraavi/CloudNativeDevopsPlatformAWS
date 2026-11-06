@@ -33,4 +33,4 @@ Do not commit credentials, secret values, Terraform state, or generated plans. F
 
 - [Project overview](../README.md)
 - [Architecture and implementation approach](../Docs/architecture.md)
-- [Documentation index](../Docs/README.md)
+- [Step-by-step setup guide](../Docs/setup-process.md)
