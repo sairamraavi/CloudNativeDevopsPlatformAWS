@@ -1,0 +1,1094 @@
+#!/usr/bin/env python3
+"""Checkpoint, remove or recover the dev Terraform environment from a Mac."""
+import argparse
+import fcntl
+import getpass
+import hashlib
+import ipaddress
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.parse
+import urllib.request
+from datetime import datetime, timezone
+
+ROOT = Path(__file__).resolve().parents[1]
+DEV = ROOT / "Terraform/environments/dev"
+CTX = "streamingapp-capstone-dev"
+APP = "streaming-app-dev"
+MON = "monitoring"
+SERVICES = ("admin", "auth", "streaming", "chat", "frontend")
+SSH_KEY = Path.home() / ".ssh/streamingapp-capstone-jenkins"
+RELEASES = {
+    "external-secrets": ("external-secrets", "external-secrets/external-secrets"),
+    "application-secrets": (APP, "helm/application-secrets"),
+    "aws-load-balancer-controller": ("kube-system", "eks/aws-load-balancer-controller"),
+    "cluster-autoscaler": ("kube-system", "autoscaler/cluster-autoscaler"),
+    "streamingapp": (APP, "helm/streamingapp"),
+    "monitoring": (MON, "prometheus-community/kube-prometheus-stack"),
+    "fluent-bit": (MON, "fluent/fluent-bit"),
+}
+REPOS = {
+    "external-secrets": "https://charts.external-secrets.io",
+    "eks": "https://aws.github.io/eks-charts",
+    "autoscaler": "https://kubernetes.github.io/autoscaler",
+    "prometheus-community": "https://prometheus-community.github.io/helm-charts",
+    "fluent": "https://fluent.github.io/helm-charts",
+}
+
+
+def run(*args, data=None, capture=True):
+    result = subprocess.run(
+        list(map(str, args)),
+        input=data,
+        text=True,
+        check=True,
+        stdout=subprocess.PIPE if capture else None,
+    )
+    return result.stdout.strip() if capture else None
+
+
+def aws(*args):
+    return json.loads(run("aws", *args, "--output", "json") or "null")
+
+
+def tf(*args):
+    return run("terraform", "-chdir=" + str(DEV), *args)
+
+
+def outputs(where):
+    return {
+        k: v["value"]
+        for k, v in json.loads(
+            run("terraform", "-chdir=" + str(where), "output", "-json")
+        ).items()
+    }
+
+
+def k(*args, **kwargs):
+    return run("kubectl", "--context", CTX, *args, **kwargs)
+
+
+def helm(*args, **kwargs):
+    return run("helm", *args, "--kube-context", CTX, **kwargs)
+
+
+def resource(ns, kind, name):
+    return json.loads(k("-n", ns, "get", kind, name, "-o", "json"))
+
+
+def apply(obj):
+    k(
+        "apply",
+        "--server-side",
+        "--field-manager=capstone-recovery",
+        "-f",
+        "-",
+        data=json.dumps(obj),
+    )
+
+
+def connect(o):
+    run(
+        "aws",
+        "eks",
+        "update-kubeconfig",
+        "--name",
+        o["eks_cluster_name"],
+        "--alias",
+        CTX,
+    )
+
+
+def require(ok, message):
+    if not ok:
+        raise ValueError(message)
+
+
+def dns(method, zone, suffix="", payload=None):
+    url = "https://api.cloudflare.com/client/v4/zones/" + zone + "/dns_records" + suffix
+    req = urllib.request.Request(
+        url,
+        method=method,
+        headers={
+            "Authorization": "Bearer " + os.environ["CLOUDFLARE_API_TOKEN"],
+            "Content-Type": "application/json",
+        },
+        data=json.dumps(payload).encode() if payload else None,
+    )
+    with urllib.request.urlopen(req, timeout=30) as response:
+        body = json.load(response)
+    require(body["success"], "Cloudflare DNS operation failed")
+    return body["result"]
+
+
+def records(zone, name):
+    return dns("GET", zone, "?" + urllib.parse.urlencode({"name": name}))
+
+
+def atlas(project, *args):
+    return run("atlas", "accessLists", *args, "--projectId", project)
+
+
+def atlas_entries(project):
+    result = json.loads(atlas(project, "list", "--output", "json", "--limit", "500"))
+    entries = result if isinstance(result, list) else result["results"]
+    if isinstance(result, dict):
+        require(
+            result.get("totalCount", len(entries)) == len(entries),
+            "Atlas list exceeds one page",
+        )
+    return {
+        x.get("ipAddress", x.get("cidrBlock", "").split("/")[0]): x
+        for x in entries
+        if x.get("ipAddress") or x.get("cidrBlock", "").endswith("/32")
+    }
+
+
+def vpc_lbs(vpc):
+    return [
+        lb
+        for lb in aws("elbv2", "describe-load-balancers")["LoadBalancers"]
+        if lb["VpcId"] == vpc
+    ]
+
+
+def wait_for(description, fn, seconds=600):
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        result = fn()
+        if result:
+            return result
+        time.sleep(8)
+    raise ValueError("Timed out waiting for " + description)
+
+
+def save(path, obj):
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(obj, indent=2))
+    tmp.replace(path)
+
+
+def check_images(images):
+    for service, image in images.items():
+        tag = image["tag"]
+        digest = aws(
+            "ecr",
+            "describe-images",
+            "--repository-name",
+            "streamingapp-capstone-" + service,
+            "--image-ids",
+            "imageTag=" + tag,
+        )["imageDetails"][0]["imageDigest"]
+        require(digest == image["digest"], "Image digest changed: " + service)
+
+
+def checkpoint(directory, identity, persistent, o, tmp):
+    instance = aws(
+        "ec2", "describe-instances", "--instance-ids", o["jenkins_instance_id"]
+    )["Reservations"][0]["Instances"][0]
+    live_ip = instance.get("PublicIpAddress")
+    require(live_ip, "Jenkins instance has no live public IP")
+    if live_ip != o.get("jenkins_public_ip"):
+        print("Using live Jenkins EC2 public IP:", live_ip, flush=True)
+        o["jenkins_public_ip"] = live_ip
+    host_options = verify_ssh(o, tmp)
+    connect(o)
+    print("Capturing dev releases, image digests and credentials.", flush=True)
+    m = {
+        "account": identity["Account"],
+        "region": os.environ["AWS_REGION"],
+        "old": o,
+        "zone": os.environ["CLOUDFLARE_ZONE_ID"],
+        "atlas": os.environ["ATLAS_PROJECT_ID"],
+        "releases": {},
+        "images": {},
+    }
+    releases = json.loads(helm("list", "-A", "-o", "json"))
+    for name, (ns, chart) in RELEASES.items():
+        record = next(
+            (
+                r
+                for r in releases
+                if r["name"] == name
+                and r["namespace"] == ns
+                and r["status"] == "deployed"
+            ),
+            None,
+        )
+        require(record, f"Required deployed Helm release missing: {ns}/{name}")
+        m["releases"][name] = {
+            "version": record["chart"].removeprefix(chart.split("/")[-1] + "-"),
+            "values": json.loads(helm("get", "values", name, "-n", ns, "-o", "json"))
+            or {},
+        }
+    for svc in SERVICES:
+        image = resource(APP, "deployment", svc)["spec"]["template"]["spec"][
+            "containers"
+        ][0]["image"]
+        repo, tag = image.rsplit(":", 1)
+        require(
+            repo == persistent["repository_urls"][svc],
+            "Unexpected repository for " + svc,
+        )
+        m["images"][svc] = {
+            "tag": tag,
+            "digest": aws(
+                "ecr",
+                "describe-images",
+                "--repository-name",
+                repo.split("/")[-1],
+                "--image-ids",
+                "imageTag=" + tag,
+            )["imageDetails"][0]["imageDigest"],
+        }
+    require(
+        len({m["images"][s]["tag"] for s in SERVICES if s != "frontend"}) == 1,
+        "Backend tags differ; chart requires one backend tag",
+    )
+    ing = resource(APP, "ingress", "streamingapp")
+    m["domain"] = ing["spec"]["rules"][0]["host"]
+    m["alb"] = ing["status"]["loadBalancer"]["ingress"][0]["hostname"]
+    lbs = vpc_lbs(o["vpc_id"])
+    require(
+        len(lbs) == 1 and lbs[0]["DNSName"] == m["alb"],
+        "Unexpected load balancers in dev VPC",
+    )
+    m["albArn"] = lbs[0]["LoadBalancerArn"]
+    rec = records(m["zone"], m["domain"])
+    require(
+        len(rec) == 1
+        and rec[0]["type"] == "CNAME"
+        and rec[0]["content"].rstrip(".") == m["alb"],
+        "App CNAME must match current ingress",
+    )
+    m["dns"] = {
+        x: rec[0][x]
+        for x in ("name", "type", "ttl", "proxied", "comment", "tags")
+        if rec[0].get(x) is not None
+    }
+    m["dnsId"] = rec[0]["id"]
+    entries = atlas_entries(m["atlas"])
+    for ip in o["nat_public_ips"].values():
+        require(
+            ip in entries,
+            "Missing current NAT /32 entry in configured Atlas project: " + ip,
+        )
+    for name, keys in (
+        ("grafana-admin", ("admin-user", "admin-password")),
+        ("alertmanager-ses-smtp", ("username", "password")),
+    ):
+        m[name] = resource(MON, "secret", name)["data"]
+        require(all(m[name].get(key) for key in keys), "Missing key in " + name)
+    config = resource(MON, "alertmanagerconfig", "capstone-email")
+    m["alertConfig"] = {k: config[k] for k in ("apiVersion", "kind", "spec")}
+    m["alertConfig"]["metadata"] = {"name": "capstone-email", "namespace": MON}
+    instance = aws(
+        "ec2", "describe-instances", "--instance-ids", o["jenkins_instance_id"]
+    )["Reservations"][0]["Instances"][0]
+    m["ami"] = instance["ImageId"]
+    claims = json.loads(k("-n", MON, "get", "pvc", "-o", "json"))["items"]
+    require(len(claims) == 3, "Expected exactly the three capstone monitoring claims")
+    m["volumes"] = {}
+    m["volumeZones"] = {}
+    for claim in claims:
+        pv = resource(MON, "pv", claim["spec"]["volumeName"])
+        require(
+            pv["spec"]["persistentVolumeReclaimPolicy"] == "Delete",
+            "Unexpected PV reclaim policy",
+        )
+        name = claim["metadata"]["name"]
+        vol = pv["spec"]["csi"]["volumeHandle"]
+        info = aws("ec2", "describe-volumes", "--volume-ids", vol)["Volumes"][0]
+        require(
+            info["Encrypted"] and info["AvailabilityZone"] in o["nat_public_ips"],
+            "Unexpected volume encryption or AZ: " + name,
+        )
+        m["volumes"][name] = vol
+        m["volumeZones"][name] = info["AvailabilityZone"]
+    # Record an EBS snapshot of each PVC. The filesystem snapshots are crash-consistent.
+    m["snapshots"] = {}
+    for name, vol in m["volumes"].items():
+        snap = aws(
+            "ec2",
+            "create-snapshot",
+            "--volume-id",
+            vol,
+            "--description",
+            "StreamingApp dev recovery: " + name,
+            "--tag-specifications",
+            "ResourceType=snapshot,Tags=[{Key=Project,Value=streamingapp-capstone},{Key=Recovery,Value="
+            + directory.name
+            + "}]",
+        )
+        m["snapshots"][name] = snap["SnapshotId"]
+        save(directory / "partial.json", m)
+    run(
+        "aws",
+        "ec2",
+        "wait",
+        "snapshot-completed",
+        "--snapshot-ids",
+        *m["snapshots"].values(),
+        capture=False,
+    )
+    remote = "/var/tmp/capstone-backup-" + directory.name
+    host = "ubuntu@" + o["jenkins_public_ip"]
+    print("Backing up Jenkins and SonarQube; CI services pause briefly.", flush=True)
+    run(
+        "ssh",
+        *host_options,
+        "-i",
+        SSH_KEY,
+        host,
+        "sudo bash -se -- " + remote,
+        data=(ROOT / "scripts/dev/backup-host.sh").read_text(),
+        capture=False,
+    )
+    # Do not attempt SCP or teardown when the remote backup is absent/incomplete.
+    required_remote = (
+        "SHA256SUMS", "jenkins-home.tar.gz", "sonarqube.dump",
+        "sonarqube-extensions.tar.gz", "host-private-config.tar.gz",
+    )
+    check_command = " && ".join(
+        "test -s " + remote + "/" + name for name in required_remote
+    )
+    run(
+        "ssh", *host_options, "-i", SSH_KEY, host,
+        "sudo bash -c '" + check_command + "'",
+    )
+    # Explicitly allow the SSH login user to read just this staging directory.
+    run(
+        "ssh", *host_options, "-i", SSH_KEY, host,
+        "sudo chown -R ubuntu:ubuntu " + remote,
+    )
+    for name in (
+        "SHA256SUMS",
+        "jenkins-home.tar.gz",
+        "sonarqube.dump",
+        "sonarqube-extensions.tar.gz",
+        "host-private-config.tar.gz",
+    ):
+        run(
+            "scp",
+            *host_options,
+            "-i",
+            SSH_KEY,
+            host + ":" + remote + "/" + name,
+            directory,
+            capture=False,
+        )
+    subprocess.run(
+        ["shasum", "-a", "256", "-c", "SHA256SUMS"], cwd=directory, check=True
+    )
+    # Remove only this run's remote staging copy after verifying the transfer.
+    names = (
+        "SHA256SUMS",
+        "jenkins-home.tar.gz",
+        "sonarqube.dump",
+        "sonarqube-extensions.tar.gz",
+        "host-private-config.tar.gz",
+    )
+    run(
+        "ssh",
+        *host_options,
+        "-i",
+        SSH_KEY,
+        host,
+        "rm -f "
+        + " ".join(remote + "/" + name for name in names)
+        + " && rmdir "
+        + remote,
+    )
+    save(directory / "session.json", m)
+    (directory / "session.sha256").write_text(
+        hashlib.sha256((directory / "session.json").read_bytes()).hexdigest()
+    )
+    (directory / "partial.json").unlink()
+    return m
+
+
+def inputs(m, p):
+    env = os.environ
+    caller = aws("sts", "get-caller-identity")
+    require(
+        caller["Account"] == m["account"] and env["AWS_REGION"] == m["region"],
+        "Backup/account or region mismatch",
+    )
+    role = env.get("CAPSTONE_EKS_ADMIN_ROLE_ARN")
+    if not role:
+        role = aws("iam", "get-role", "--role-name", caller["Arn"].split("/")[-2])[
+            "Role"
+        ]["Arn"]
+    with urllib.request.urlopen("https://checkip.amazonaws.com", timeout=15) as r:
+        cidr = str(ipaddress.IPv4Address(r.read().decode().strip())) + "/32"
+    args = {
+        "expected_account_id": m["account"],
+        "aws_region": m["region"],
+        "nat_mode": "per_az",
+        "availability_zones": json.dumps(sorted(m["old"]["nat_public_ips"])),
+        "eks_admin_role_arn": role,
+        "eks_public_access_cidrs": json.dumps([cidr]),
+        "jenkins_admin_cidr": cidr,
+        "jenkins_public_key_path": str(SSH_KEY) + ".pub",
+        "jenkins_ami_id": env.get("CAPSTONE_JENKINS_AMI", m["ami"]),
+        "media_bucket_arn": p["media_bucket_arn"],
+        "application_secret_arn": p["application_dev_secret_arn"],
+    }
+    env.update({"TF_VAR_" + k: v for k, v in args.items()})
+
+
+def plan(tmp, destroy=False):
+    path = str(tmp / "dev.tfplan")
+    cmd = ["terraform", "-chdir=" + str(DEV), "plan", "-input=false", "-out=" + path]
+    if destroy:
+        cmd.append("-destroy")
+    run(*cmd, capture=False)
+    for change in json.loads(tf("show", "-json", path)).get("resource_changes", []):
+        actions = change["change"]["actions"]
+        require(
+            (
+                ("delete" not in actions)
+                if not destroy
+                else all(a in ("read", "no-op", "delete") for a in actions)
+            ),
+            "Unexpected Terraform action for " + change["address"],
+        )
+    return path
+
+
+def teardown(m, tmp, directory):
+    o = m["old"]
+    # Recheck identity before destructive steps; never reuse a checkpoint for another live cluster.
+    current = outputs(DEV)
+    if not (directory / "cleanup-complete").exists():
+        require(current.get("vpc_id") == o["vpc_id"], "Dev VPC differs from checkpoint")
+        connect(current)
+        helm(
+            "uninstall",
+            "streamingapp",
+            "-n",
+            APP,
+            "--ignore-not-found",
+            "--wait",
+            "--timeout",
+            "10m",
+            capture=False,
+        )
+        wait_for("ALB deletion", lambda: not vpc_lbs(o["vpc_id"]))
+        helm(
+            "uninstall",
+            "monitoring",
+            "-n",
+            MON,
+            "--ignore-not-found",
+            "--wait",
+            "--timeout",
+            "10m",
+            capture=False,
+        )
+        for name in m["volumes"]:
+            k("-n", MON, "delete", "pvc", name, "--ignore-not-found", "--timeout=5m")
+
+        def gone():
+            return not aws(
+                "ec2",
+                "describe-volumes",
+                "--filters",
+                "Name=volume-id,Values=" + ",".join(m["volumes"].values()),
+            )["Volumes"]
+
+        wait_for("monitoring EBS volume deletion", gone)
+        rec = records(m["zone"], m["domain"])
+        if rec:
+            require(
+                len(rec) == 1
+                and rec[0]["id"] == m["dnsId"]
+                and rec[0]["content"].rstrip(".") == m["alb"],
+                "DNS record changed since capture",
+            )
+            dns("DELETE", m["zone"], "/" + m["dnsId"])
+        entries = atlas_entries(m["atlas"])
+        for ip in o["nat_public_ips"].values():
+            if ip in entries:
+                atlas(
+                    m["atlas"],
+                    "delete",
+                    entries[ip].get("ipAddress") or entries[ip]["cidrBlock"],
+                    "--force",
+                )
+        (directory / "cleanup-complete").touch()
+    require(
+        current.get("vpc_id", o["vpc_id"]) == o["vpc_id"],
+        "Refusing to destroy a different dev VPC",
+    )
+    run("terraform", "-chdir=" + str(DEV), "apply", plan(tmp, True), capture=False)
+    require(not tf("state", "list"), "Dev state still has resources")
+    (directory / "destroyed").touch()
+
+
+def restore_storage(m, o):
+    apply({"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": MON}})
+    k("apply", "-f", "Monitoring/storage/gp3-encrypted.yaml")
+    uid = resource(MON, "namespace", MON)["metadata"]["uid"]
+    for claim, snapshot in m["snapshots"].items():
+        name = "recovery-" + hashlib.sha256(claim.encode()).hexdigest()[:16]
+        if k("-n", MON, "get", "pvc", claim, "--ignore-not-found", "-o", "name"):
+            existing = resource(MON, "pvc", claim)
+            require(
+                existing["metadata"]
+                .get("annotations", {})
+                .get("capstone/restore-snapshot")
+                == snapshot,
+                "Existing PVC not created by this recovery: " + claim,
+            )
+            continue
+        # Preserve the original monitoring volume placement across the worker AZs.
+        az = m["volumeZones"][claim]
+        token = hashlib.sha256((uid + snapshot).encode()).hexdigest()
+        vol = aws(
+            "ec2",
+            "create-volume",
+            "--snapshot-id",
+            snapshot,
+            "--availability-zone",
+            az,
+            "--volume-type",
+            "gp3",
+            "--client-token",
+            token,
+            "--tag-specifications",
+            "ResourceType=volume,Tags=[{Key=Project,Value=streamingapp-capstone},{Key=ebs.csi.aws.com/cluster,Value=true}]",
+        )
+        run("aws", "ec2", "wait", "volume-available", "--volume-ids", vol["VolumeId"])
+        cap = {"storage": str(vol["Size"]) + "Gi"}
+        sc = "capstone-gp3-encrypted"
+        apply(
+            {
+                "apiVersion": "v1",
+                "kind": "PersistentVolume",
+                "metadata": {"name": name},
+                "spec": {
+                    "capacity": cap,
+                    "accessModes": ["ReadWriteOnce"],
+                    "storageClassName": sc,
+                    "persistentVolumeReclaimPolicy": "Delete",
+                    "claimRef": {"name": claim, "namespace": MON},
+                    "csi": {
+                        "driver": "ebs.csi.aws.com",
+                        "volumeHandle": vol["VolumeId"],
+                        "fsType": "ext4",
+                    },
+                    "nodeAffinity": {
+                        "required": {
+                            "nodeSelectorTerms": [
+                                {
+                                    "matchExpressions": [
+                                        {
+                                            "key": "topology.kubernetes.io/zone",
+                                            "operator": "In",
+                                            "values": [az],
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                },
+            }
+        )
+        apply(
+            {
+                "apiVersion": "v1",
+                "kind": "PersistentVolumeClaim",
+                "metadata": {
+                    "name": claim,
+                    "namespace": MON,
+                    "labels": {"app.kubernetes.io/managed-by": "Helm"},
+                    "annotations": {
+                        "meta.helm.sh/release-name": "monitoring",
+                        "meta.helm.sh/release-namespace": MON,
+                        "capstone/restore-snapshot": snapshot,
+                    },
+                },
+                "spec": {
+                    "accessModes": ["ReadWriteOnce"],
+                    "storageClassName": sc,
+                    "volumeName": name,
+                    "resources": {"requests": cap},
+                },
+            }
+        )
+
+
+def verify_ssh(o, tmp):
+    # Authenticate the scanned ED25519 key against the EC2 console boot fingerprint.
+    import base64
+
+    def fetch():
+        text = (
+            aws(
+                "ec2",
+                "get-console-output",
+                "--instance-id",
+                o["jenkins_instance_id"],
+                "--latest",
+            ).get("Output")
+            or ""
+        )
+        if "SHA256:" not in text:
+            try:
+                text = base64.b64decode(text).decode(errors="replace")
+            except ValueError:
+                return False
+        expected = {
+            f
+            for line in text.splitlines()
+            if "ED25519" in line.upper()
+            for f in re.findall(r"SHA256:[A-Za-z0-9+/]+", line)
+        }
+        if not expected:
+            return False
+        try:
+            key = run("ssh-keyscan", "-T", "5", "-t", "ed25519", o["jenkins_public_ip"])
+        except subprocess.CalledProcessError:
+            return False
+        candidate = tmp / "hostkey"
+        candidate.write_text(key + "\n")
+        require(
+            run("ssh-keygen", "-lf", candidate).split()[1] in expected,
+            "Jenkins SSH fingerprint mismatch",
+        )
+        return candidate
+
+    known = subprocess.run(
+        [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ConnectTimeout=5",
+            "-i",
+            str(SSH_KEY),
+            "ubuntu@" + o["jenkins_public_ip"],
+            "true",
+        ],
+        capture_output=True,
+    )
+    if known.returncode == 0:
+        return ["-o", "StrictHostKeyChecking=yes"]
+    key = wait_for("verified Jenkins SSH host key in EC2 console", fetch)
+    os.environ["ANSIBLE_SSH_COMMON_ARGS"] = (
+        '-o StrictHostKeyChecking=yes -o UserKnownHostsFile="' + str(key) + '"'
+    )
+    return ["-o", "StrictHostKeyChecking=yes", "-o", "UserKnownHostsFile=" + str(key)]
+
+
+def restore(m, d, p, tmp):
+    subprocess.run(["shasum", "-a", "256", "-c", "SHA256SUMS"], cwd=d, check=True)
+    check_images(m["images"])
+    # Detect missing snapshots, expired credentials, or foreign DNS before provisioning.
+    snapshots = aws(
+        "ec2", "describe-snapshots", "--snapshot-ids", *m["snapshots"].values()
+    )["Snapshots"]
+    require(
+        all(
+            s["State"] == "completed" and s["OwnerId"] == m["account"]
+            for s in snapshots
+        ),
+        "Monitoring snapshots unavailable",
+    )
+    rec = records(m["zone"], m["domain"])
+    entries = atlas_entries(m["atlas"])
+    if not (d / "restore-started").exists():
+        require(not tf("state", "list"), "First restore requires empty dev state")
+        require(not rec, "Application CNAME already exists; inspect DNS before restore")
+        (d / "restore-started").touch()
+    inputs_state = outputs(DEV)
+    restore_id = d / "restored-vpc"
+    if restore_id.exists():
+        require(
+            inputs_state.get("vpc_id") == restore_id.read_text(),
+            "Live VPC differs from this recovery",
+        )
+    run("terraform", "-chdir=" + str(DEV), "apply", plan(tmp), capture=False)
+    o = outputs(DEV)
+    restore_id.write_text(o["vpc_id"])
+    connect(o)
+    for az, ip in o["nat_public_ips"].items():
+        if ip not in entries:
+            atlas(
+                m["atlas"],
+                "create",
+                ip,
+                "--type",
+                "ipAddress",
+                "--comment",
+                "Capstone dev NAT " + az.split()[-1],
+            )
+    for repo, url in REPOS.items():
+        helm("repo", "add", repo, url, "--force-update")
+    helm("repo", "update", *REPOS.keys())
+
+    def install(name, values):
+        ns, chart = RELEASES[name]
+        file = tmp / (name + ".json")
+        save(file, values)
+        args = [
+            "upgrade",
+            "--install",
+            name,
+            chart,
+            "-n",
+            ns,
+            "--create-namespace",
+            "-f",
+            file,
+            "--wait",
+            "--timeout",
+            "12m",
+        ]
+        if not chart.startswith("helm/"):
+            args.extend(["--version", m["releases"][name]["version"]])
+        helm(*args, capture=False)
+
+    def vals(name):
+        return m["releases"][name]["values"]
+
+    install("external-secrets", vals("external-secrets"))
+    v = vals("application-secrets")
+    v.setdefault("secretReader", {})["roleArn"] = o["secret_reader_role_arn"]
+    install("application-secrets", v)
+    k(
+        "-n",
+        APP,
+        "wait",
+        "--for=condition=Ready",
+        "externalsecret/streamingapp-application",
+        "--timeout=180s",
+    )
+    role = "eks.amazonaws.com/role-arn"
+    v = vals("aws-load-balancer-controller")
+    v.update(clusterName=o["eks_cluster_name"], region=m["region"], vpcId=o["vpc_id"])
+    v.setdefault("serviceAccount", {}).setdefault("annotations", {})[role] = o[
+        "load_balancer_controller_role_arn"
+    ]
+    install("aws-load-balancer-controller", v)
+    v = vals("cluster-autoscaler")
+    v.setdefault("rbac", {}).setdefault("serviceAccount", {}).setdefault(
+        "annotations", {}
+    )[role] = o["autoscaler_role_arn"]
+    install("cluster-autoscaler", v)
+    v = vals("streamingapp")
+    v.setdefault("image", {}).update(
+        registry=p["repository_urls"]["auth"].split("/")[0],
+        tag=m["images"]["auth"]["tag"],
+    )
+    v.setdefault("frontend", {})["tag"] = m["images"]["frontend"]["tag"]
+    for svc, arn in o["media_workload_role_arns"].items():
+        v.setdefault("services", {}).setdefault(svc, {})["roleArn"] = arn
+    v.setdefault("app", {})["s3Bucket"] = p["media_bucket_name"]
+    v.setdefault("ingress", {}).update(
+        enabled=True, host=m["domain"], certificateArn=p["application_certificate_arn"]
+    )
+    install("streamingapp", v)
+
+    def hostname():
+        lbs = (
+            resource(APP, "ingress", "streamingapp")
+            .get("status", {})
+            .get("loadBalancer", {})
+            .get("ingress", [])
+        )
+        return lbs[0].get("hostname") if lbs else None
+
+    public = wait_for("application ALB hostname", hostname)
+
+    def probe():
+        return (
+            subprocess.run(
+                [
+                    "curl",
+                    "-fsS",
+                    "--connect-to",
+                    f'{m["domain"]}:443:{public}:443',
+                    "--max-time",
+                    "8",
+                    "-o",
+                    os.devnull,
+                    "https://" + m["domain"] + "/",
+                ]
+            ).returncode
+            == 0
+        )
+
+    wait_for("HTTPS from ALB", probe)
+    rec = records(m["zone"], m["domain"])
+    if not rec:
+        dns("POST", m["zone"], payload=dict(m["dns"], content=public))
+    else:
+        require(
+            len(rec) == 1 and rec[0]["content"].rstrip(".") == public,
+            "Unexpected app DNS target",
+        )
+    verify_ssh(o, tmp)
+    run(ROOT / "scripts/recover-dev-tools.sh", d, capture=False)
+    restore_storage(m, o)
+    for name in ("grafana-admin", "alertmanager-ses-smtp"):
+        apply(
+            {
+                "apiVersion": "v1",
+                "kind": "Secret",
+                "metadata": {"name": name, "namespace": MON},
+                "data": m[name],
+            }
+        )
+    v = vals("monitoring")
+    prom = v.setdefault("prometheus", {}).setdefault("prometheusSpec", {})
+    jobs = prom.get("additionalScrapeConfigs", [])
+    matched = [j for j in jobs if j["job_name"] == "jenkins"]
+    require(len(matched) == 1, "Missing Jenkins scrape job in captured Helm settings")
+    matched[0]["static_configs"][0]["targets"] = [o["jenkins_private_ip"] + ":8082"]
+    am = v.setdefault("alertmanager", {}).setdefault("alertmanagerSpec", {})
+    am["alertmanagerConfiguration"] = None
+    install("monitoring", v)
+    apply(m["alertConfig"])
+    am["alertmanagerConfiguration"] = {"name": "capstone-email"}
+    install("monitoring", v)
+    v = vals("fluent-bit")
+    v.setdefault("serviceAccount", {}).setdefault("annotations", {})[role] = o[
+        "application_logs_role_arn"
+    ]
+    install("fluent-bit", v)
+    for svc in SERVICES:
+        k("-n", APP, "rollout", "status", "deployment/" + svc, "--timeout=3m")
+    wait_for(
+        "public streaming API",
+        lambda: subprocess.run(
+            [
+                "curl",
+                "-fsS",
+                "--max-time",
+                "10",
+                "-o",
+                os.devnull,
+                "https://" + m["domain"] + "/api/streaming/videos/featured",
+            ]
+        ).returncode
+        == 0,
+    )
+    print(
+        "Dev recovery completed. Verify playback, CI and Outlook delivery before marking the drill passed."
+    )
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "action", choices=["configure", "check", "checkpoint", "down", "up"]
+    )
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="confirm dev teardown without an interactive prompt",
+    )
+    args = parser.parse_args()
+    os.chdir(ROOT)
+    os.umask(0o077)
+    os.environ["AWS_PAGER"] = ""
+    base = Path(
+        os.environ.get(
+            "CAPSTONE_SESSION_DIR", Path.home() / "PrivateBackups/capstone/dev-sessions"
+        )
+    ).resolve()
+    require(
+        not base.is_relative_to(ROOT),
+        "Choose a private directory outside the repository",
+    )
+    base.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(base, 0o700)
+    settings = base / "provider-settings.json"
+    if args.action == "configure":
+        os.environ.setdefault("AWS_PROFILE", "streamingapp")
+        os.environ.setdefault("AWS_REGION", "ap-south-1")
+        require(sys.stdin.isatty(), "Run configure interactively")
+        values = {}
+        for key, label in (
+            ("AWS_PROFILE", "AWS CLI profile"),
+            ("AWS_REGION", "AWS region"),
+            ("ATLAS_PROJECT_ID", "Atlas project ID"),
+            ("CLOUDFLARE_ZONE_ID", "Cloudflare zone ID"),
+        ):
+            values[key] = input(
+                label + " [" + os.environ.get(key, "") + "]: "
+            ).strip() or os.environ.get(key, "")
+            require(values[key], label + " is required")
+        values["CLOUDFLARE_API_TOKEN"] = getpass.getpass(
+            "Zone-scoped Cloudflare DNS edit token (hidden): "
+        ).strip()
+        require(values["CLOUDFLARE_API_TOKEN"], "Token required")
+        save(settings, values)
+        print("Private settings saved:", settings)
+        return
+    if settings.is_file():
+        saved = json.loads(settings.read_text())
+        for key in (
+            "AWS_PROFILE",
+            "AWS_REGION",
+            "ATLAS_PROJECT_ID",
+            "CLOUDFLARE_ZONE_ID",
+            "CLOUDFLARE_API_TOKEN",
+        ):
+            os.environ.setdefault(key, saved[key])
+    os.environ.setdefault("AWS_PROFILE", "streamingapp")
+    os.environ.setdefault("AWS_REGION", "ap-south-1")
+    os.environ["AWS_DEFAULT_REGION"] = os.environ["AWS_REGION"]
+    for tool in (
+        "aws",
+        "terraform",
+        "kubectl",
+        "helm",
+        "ansible",
+        "ansible-playbook",
+        "ssh",
+        "scp",
+        "atlas",
+        "curl",
+        "shasum",
+    ):
+        require(shutil.which(tool), "Install required command: " + tool)
+    for var in ("CLOUDFLARE_ZONE_ID", "CLOUDFLARE_API_TOKEN", "ATLAS_PROJECT_ID"):
+        require(os.environ.get(var), "Set " + var + " for the capstone project")
+    require(
+        SSH_KEY.is_file() and Path(str(SSH_KEY) + ".pub").is_file(),
+        "Missing Jenkins SSH key pair",
+    )
+    lock = (base / ".lock").open("a")
+    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    with tempfile.TemporaryDirectory() as td:
+        tmp = Path(td)
+        original_kubeconfig = os.environ.get("KUBECONFIG")
+        os.environ["KUBECONFIG"] = str(tmp / "kubeconfig")
+        bootstrap = outputs(ROOT / "Terraform/bootstrap")
+        account = bootstrap["deployment_account_id"]
+        identity = aws("sts", "get-caller-identity")
+        require(
+            identity["Account"] == account,
+            "AWS identity does not match bootstrap state",
+        )
+        tf(
+            "init",
+            "-input=false",
+            "-backend-config=bucket=" + bootstrap["terraform_state_bucket_name"],
+            "-backend-config=key=environments/dev/terraform.tfstate",
+            "-backend-config=region=" + os.environ["AWS_REGION"],
+            "-backend-config=encrypt=true",
+            "-backend-config=use_lockfile=true",
+        )
+        require(
+            tf("workspace", "show") == "default",
+            "Expected default workspace for the dev state key",
+        )
+        p = outputs(ROOT / "Terraform/persistent")
+        active = base / "current"
+        if args.action == "check":
+            print("AWS account verified:", account)
+            o = outputs(DEV)
+            atlas_entries(os.environ["ATLAS_PROJECT_ID"])
+            if o:
+                connect(o)
+                domain = resource(APP, "ingress", "streamingapp")["spec"]["rules"][0][
+                    "host"
+                ]
+                require(
+                    records(os.environ["CLOUDFLARE_ZONE_ID"], domain),
+                    "App CNAME missing in configured zone",
+                )
+                print(helm("list", "-A"))
+            print(
+                "Read-only preflight passed. DNS/Atlas write permissions are exercised during the drill."
+            )
+            return
+        previous = Path(active.read_text().strip()) if active.exists() else None
+        if args.action == "down" and not args.yes:
+            require(
+                input("Type down-dev to back up and remove this dev environment: ")
+                == "down-dev",
+                "Cancelled",
+            )
+        resume = (
+            args.action == "down"
+            and previous
+            and (previous / "down-started").exists()
+            and not (previous / "destroyed").exists()
+        )
+        require(
+            not (
+                args.action == "checkpoint"
+                and previous
+                and (previous / "down-started").exists()
+                and not (previous / "destroyed").exists()
+            ),
+            "Resume the interrupted down before replacing its checkpoint",
+        )
+        if args.action == "up" or resume:
+            require(previous and previous.parent == base, "Missing checkpoint pointer")
+            d = previous
+            manifest = (d / "session.json").read_bytes()
+            require(
+                hashlib.sha256(manifest).hexdigest()
+                == (d / "session.sha256").read_text(),
+                "Recovery manifest checksum mismatch",
+            )
+            m = json.loads(manifest)
+            require(
+                m["zone"] == os.environ["CLOUDFLARE_ZONE_ID"]
+                and m["atlas"] == os.environ["ATLAS_PROJECT_ID"],
+                "Checkpoint provider IDs differ",
+            )
+        else:
+            o = outputs(DEV)
+            require(o.get("vpc_id"), "No live dev VPC to capture")
+            d = base / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            d.mkdir()
+            m = checkpoint(d, identity, p, o, tmp)
+            pointer = base / "current.tmp"
+            pointer.write_text(str(d))
+            pointer.replace(active)
+            print("Checkpoint saved:", d)
+        if args.action == "checkpoint":
+            return
+        inputs(m, p)
+        if args.action == "up":
+            require((d / "destroyed").exists(), "Checkpoint has no completed teardown")
+            restore(m, d, p, tmp)
+            if original_kubeconfig is None:
+                os.environ.pop("KUBECONFIG", None)
+            else:
+                os.environ["KUBECONFIG"] = original_kubeconfig
+            connect(outputs(DEV))
+        else:
+            (d / "down-started").touch()
+            teardown(m, tmp, d)
+            print("Dev destroyed. Retained checkpoint:", d)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (
+        ValueError,
+        KeyError,
+        OSError,
+        subprocess.CalledProcessError,
+        StopIteration,
+    ) as exc:
+        sys.exit("Dev session stopped: " + str(exc))

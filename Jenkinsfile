@@ -103,7 +103,8 @@ pipeline {
                     account="$(aws sts get-caller-identity \
                       --query Account --output text)"
 
-                    test "$account" = "175200623108"
+                    configured_cluster="$(kubectl config view --context streamingapp-capstone-dev --minify -o jsonpath='{.contexts[0].context.cluster}')"
+                    test "$configured_cluster" = "arn:aws:eks:$AWS_REGION:$account:cluster/streamingapp-capstone-dev-eks"
                 '''
             }
         }
@@ -131,8 +132,10 @@ pipeline {
                     ).trim()
 
                     env.IMAGE_TAG = "${commit}-${env.BUILD_NUMBER}"
-                    env.ECR_REGISTRY =
-                        '175200623108.dkr.ecr.ap-south-1.amazonaws.com'
+                    def account = sh(script: 'aws sts get-caller-identity --query Account --output text', returnStdout: true).trim()
+                    env.ECR_REGISTRY = "${account}.dkr.ecr.${env.AWS_REGION}.amazonaws.com"
+                    env.APP_HOST = sh(script: "kubectl --context streamingapp-capstone-dev -n streaming-app-dev get ingress streamingapp -o jsonpath='{.spec.rules[0].host}'", returnStdout: true).trim()
+                    if (!env.APP_HOST) { error('Missing streamingapp ingress hostname') }
                 }
             }
         }
@@ -156,10 +159,10 @@ pipeline {
                     docker build --pull --platform linux/amd64 \
                     --build-arg REACT_APP_AUTH_API_URL=/api \
                     --build-arg REACT_APP_STREAMING_API_URL=/api \
-                    --build-arg REACT_APP_STREAMING_PUBLIC_URL=https://streaming.sairamraavi.com \
+                    --build-arg REACT_APP_STREAMING_PUBLIC_URL="https://$APP_HOST" \
                     --build-arg REACT_APP_ADMIN_API_URL=/api/admin \
                     --build-arg REACT_APP_CHAT_API_URL=/api/chat \
-                    --build-arg REACT_APP_CHAT_SOCKET_URL=https://streaming.sairamraavi.com \
+                    --build-arg REACT_APP_CHAT_SOCKET_URL="https://$APP_HOST" \
                     -t "$ECR_REGISTRY/streamingapp-capstone-frontend:$IMAGE_TAG" \
                     StreamingApp/frontend
 
@@ -240,7 +243,7 @@ pipeline {
                     status="$(curl --silent --show-error \
                     --max-time 30 --output /dev/null \
                     --write-out '%{http_code}' \
-                    https://streaming.sairamraavi.com/)"
+                    "https://$APP_HOST/")"
 
                     test "$status" = "200"
 

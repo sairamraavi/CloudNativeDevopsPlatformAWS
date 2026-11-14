@@ -665,7 +665,7 @@ The current project properties make the scanner wait for its quality gate. A res
 
 ## 22. Configure and run the Jenkins pipeline
 
-Before running in another account, edit the **Jenkinsfile** account assertion, ECR registry, domain build arguments and final HTTPS check to your deployment. These remain account/domain-specific in the current code. The pipeline does not yet make the entire project account-portable automatically.
+The Jenkinsfile compares the instance-role account against the configured dev cluster ARN, derives the ECR registry from the account and region, and reads the application hostname from the deployed Ingress. The job expects the dev cluster and namespace names used by this guide.
 
 Install the Pipeline, Git, GitHub, SonarQube Scanner and Prometheus metrics plugins as required by the Jenkinsfile and monitoring. Create a Pipeline job:
 
@@ -841,6 +841,8 @@ Expected: empty dev state. Check the previously recorded EBS volume IDs in EC2 a
 
 ## 29. Resume after a teardown
 
+For the working dev environment, use the [single-command dev lifecycle](dev-lifecycle.md) for future sessions. Its `down` command captures the current settings before deletion; its `up` command consumes that checkpoint. The following manual path also applies to older teardowns without a lifecycle checkpoint.
+
 1. Log in again and repeat the session exports in step 2.
 2. Verify the private backup checksums and existing bootstrap/persistent plans.
 3. Refresh Terraform outputs from step 5; do not create duplicate persistent resources.
@@ -848,10 +850,26 @@ Expected: empty dev state. Check the previously recorded EBS volume IDs in EC2 a
 5. Recreate dev infrastructure, then update Atlas with new NAT IPs.
 6. Reinstall controllers, secrets and application using the recorded release image tag, or rebuild all images intentionally.
 7. Update application DNS to the new ALB; update Jenkins inventory through `CAPSTONE_JENKINS_IP` and the monitoring private-IP target.
-8. Recreate monitoring credentials/configuration and configure or restore Jenkins/SonarQube. Recreate the Jenkins kubeconfig for the new cluster.
+8. Recreate monitoring credentials/configuration. Use the recovery command below to restore the Jenkins EC2 tools and refresh Jenkins’ kubeconfig.
 9. Verify login, upload/playback, chat, pipeline, alert delivery and logs before calling recovery complete.
 
 Do not reuse a saved Terraform plan from before teardown, an old ALB hostname or an old IP address.
+
+### Restore the dev Jenkins and SonarQube host
+
+After Terraform recreates the dev host, sign in with the intended AWS profile. Verify its SSH host fingerprint and accept it once as in step 19. From the repository root on your Mac, run:
+
+```bash
+export AWS_PROFILE=streamingapp
+export AWS_REGION=ap-south-1
+./scripts/recover-dev-tools.sh "$HOME/PrivateBackups/capstone/capstone-backup-20261031T074819Z"
+```
+
+Use your private backup directory containing the four archives and their checksum manifest. The command reads the current Jenkins IP and EKS name from Terraform, provisions tools through Ansible, transfers the backup over SSH, verifies it, and restores the existing Cloudflare token and SonarQube Compose settings. It refreshes Jenkins’ private kubeconfig using the EC2 instance role.
+
+The restore expects the capstone backup layout: Jenkins under `jenkins/`, extensions relative to their volume root, and the private files at `etc/cloudflared/token`, `opt/capstone-sonarqube/compose.yaml` and `opt/capstone-sonarqube/.env`. The previous Jenkins home is preserved during a fresh restore. A rerun keeps an existing capstone job, populated SonarQube database and nonempty private config files. Use a trusted, verified backup. The remote private copy occupies space under `/var/backups/capstone-recovery`.
+
+The playbook waits for Jenkins login through nginx on port 8081 and for SonarQube to return JSON status `UP` through nginx on port 8082. A SonarQube HTTP 200 with status `STARTING` keeps the check running. On a new host the connector starts after these checks. Keep the existing published Cloudflare routes, Access policy and a valid connector token. After the play succeeds, sign in through each public URL and confirm the Jenkins build history and previous SonarQube project analysis. If the SonarQube wait times out, inspect `sudo docker compose logs --tail=80 sonarqube db` from `/opt/capstone-sonarqube` on EC2. Leave the database volume in place while diagnosing startup.
 
 ## Troubleshooting checkpoints
 

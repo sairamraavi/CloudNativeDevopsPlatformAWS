@@ -1,0 +1,82 @@
+---
+- name: Recover the development CI services from a trusted capstone backup
+  hosts: jenkins
+  become: true
+  vars:
+    backup_source: "{{ lookup('env', 'CAPSTONE_BACKUP_DIR') }}"
+    remote_backup: /var/backups/capstone-recovery
+  tasks:
+    - name: Create private backup staging directory
+      ansible.builtin.file:
+        path: "{{ remote_backup }}"
+        state: directory
+        owner: root
+        mode: "0700"
+
+    - name: Transfer backup files
+      ansible.builtin.copy:
+        src: "{{ backup_source }}/{{ item }}"
+        dest: "{{ remote_backup }}/{{ item }}"
+        owner: root
+        mode: "0600"
+      diff: false
+      loop:
+        - SHA256SUMS
+        - jenkins-home.tar.gz
+        - sonarqube.dump
+        - sonarqube-extensions.tar.gz
+        - host-private-config.tar.gz
+
+    - name: Verify backup integrity on the destination
+      ansible.builtin.command: sha256sum -c SHA256SUMS
+      args:
+        chdir: "{{ remote_backup }}"
+      changed_when: false
+
+    - name: Restore Jenkins and start SonarQube with its database
+      ansible.builtin.script:
+        cmd: "files/recover-dev-tools.sh {{ remote_backup }}"
+        executable: /bin/bash
+
+    - name: Refresh the Jenkins kubeconfig using the instance role
+      become_user: jenkins
+      ansible.builtin.command:
+        argv:
+          - aws
+          - eks
+          - update-kubeconfig
+          - --name
+          - "{{ lookup('env', 'CAPSTONE_CLUSTER_NAME') }}"
+          - --region
+          - "{{ lookup('env', 'AWS_REGION') }}"
+          - --alias
+          - streamingapp-capstone-dev
+          - --kubeconfig
+          - /var/lib/jenkins/.kube/config
+
+    - name: Verify Jenkins deployment access
+      become_user: jenkins
+      ansible.builtin.command: kubectl --kubeconfig /var/lib/jenkins/.kube/config --context streamingapp-capstone-dev auth can-i patch deployments -n streaming-app-dev
+      changed_when: false
+
+    - name: Wait for Jenkins login via nginx
+      ansible.builtin.uri:
+        url: http://127.0.0.1:8081/login
+        use_proxy: false
+      register: jenkins_login
+      retries: 30
+      delay: 5
+      until: jenkins_login.status == 200
+
+    - name: Wait for SonarQube to report UP through nginx
+      ansible.builtin.uri:
+        url: http://127.0.0.1:8082/api/system/status
+        use_proxy: false
+      register: sonar_status
+      retries: 60
+      delay: 5
+      until: sonar_status.status == 200 and (sonar_status.json | default({})).get('status') == 'UP'
+
+    - name: Start the existing Cloudflare connector after origin readiness
+      ansible.builtin.include_role:
+        name: cloudflared
