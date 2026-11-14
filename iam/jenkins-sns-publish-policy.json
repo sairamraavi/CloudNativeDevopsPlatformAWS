@@ -5,7 +5,13 @@
       "Sid": "PublishStreamingAppAlerts",
       "Effect": "Allow",
       "Action": "sns:Publish",
-      "Resource": "arn:aws:sns:ap-south-1:175200623108:streamingapp-alerts"
+      "Resource": "arn:aws:sns:*:*:streamingapp-alerts",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceAccount": "${aws:PrincipalAccount}",
+          "aws:RequestedRegion": "ap-south-1"
+        }
+      }
     }
   ]
 }

@@ -205,7 +205,8 @@ pipeline {
                 sh '''
                     set -eu
 
-                    helm lint helm/streamingapp
+                    helm get values streamingapp --kube-context streamingapp-capstone-dev --namespace streaming-app-dev -o yaml |
+                    helm lint helm/streamingapp -f - --set-string image.registry="$ECR_REGISTRY" --set-string image.tag="$IMAGE_TAG" --set-string frontend.tag="$IMAGE_TAG"
 
                     helm upgrade streamingapp helm/streamingapp \
                     --kube-context streamingapp-capstone-dev \

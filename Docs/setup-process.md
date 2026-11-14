@@ -386,7 +386,7 @@ Expected: controller 2/2 Ready and ingress class `alb`. The chart version matche
 ```bash
 export CAPSTONE_ADMIN_MEDIA_ROLE="$(terraform -chdir=Terraform/environments/dev output -json media_workload_role_arns | python3 -c 'import json,sys; print(json.load(sys.stdin)["admin"])')"
 export CAPSTONE_STREAMING_MEDIA_ROLE="$(terraform -chdir=Terraform/environments/dev output -json media_workload_role_arns | python3 -c 'import json,sys; print(json.load(sys.stdin)["streaming"])')"
-helm lint helm/streamingapp
+helm lint helm/streamingapp --set-string image.registry="$ECR_REGISTRY" --set-string image.tag="$IMAGE_TAG" --set-string frontend.tag="$IMAGE_TAG" --set-string app.s3Bucket="$CAPSTONE_MEDIA_BUCKET"
 helm upgrade --install streamingapp helm/streamingapp \
   --kube-context streamingapp-capstone-dev -n streaming-app-dev \
   --set-string image.registry="$ECR_REGISTRY" --set-string image.tag="$IMAGE_TAG" \
