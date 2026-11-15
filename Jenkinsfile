@@ -8,6 +8,11 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
 
+    parameters {
+        booleanParam(name: 'DEPLOY_TO_DEV', defaultValue: true,
+            description: 'Deploy the images from this build to dev and verify the rollout. Clear to build, test, scan with SonarQube, and publish images only.')
+    }
+
     triggers {
         githubPush()
     }
@@ -159,10 +164,8 @@ pipeline {
                     docker build --pull --platform linux/amd64 \
                     --build-arg REACT_APP_AUTH_API_URL=/api \
                     --build-arg REACT_APP_STREAMING_API_URL=/api \
-                    --build-arg REACT_APP_STREAMING_PUBLIC_URL="https://$APP_HOST" \
                     --build-arg REACT_APP_ADMIN_API_URL=/api/admin \
                     --build-arg REACT_APP_CHAT_API_URL=/api/chat \
-                    --build-arg REACT_APP_CHAT_SOCKET_URL="https://$APP_HOST" \
                     -t "$ECR_REGISTRY/streamingapp-capstone-frontend:$IMAGE_TAG" \
                     StreamingApp/frontend
 
@@ -201,6 +204,7 @@ pipeline {
         }
 
         stage('Deploy to EKS') {
+            when { expression { params.DEPLOY_TO_DEV } }
             steps {
                 sh '''
                     set -eu
@@ -223,6 +227,7 @@ pipeline {
         }
 
         stage('Post-Deployment Verification') {
+            when { expression { params.DEPLOY_TO_DEV } }
             steps {
                 sh '''
                     set -eu
