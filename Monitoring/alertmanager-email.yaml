@@ -29,7 +29,7 @@ spec:
     - name: outlook-email
       emailConfigs:
         - to: sairamraavi@outlook.com
-          from: monitoring@sairamraavi.com
+          from: sairamraavi@outlook.com
           smarthost: email-smtp.ap-south-1.amazonaws.com:587
           authUsername: "__SES_SMTP_USERNAME__"
           authPassword:

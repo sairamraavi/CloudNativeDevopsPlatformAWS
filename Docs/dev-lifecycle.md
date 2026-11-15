@@ -6,7 +6,9 @@ Run these commands from the repository root on the Mac that holds your SSH key a
 
 1. Use Python 3.9+, Git, Terraform, AWS CLI, kubectl, Helm 4, Ansible, OpenSSH, curl and shasum. Install the MongoDB Atlas CLI if necessary (`brew install mongodb-atlas-cli` on Homebrew). Authenticate it for the capstone project with `atlas auth login` or configure a dedicated Atlas service account permitted to list, create and delete project IP access-list entries. See the [Atlas access-list commands](https://www.mongodb.com/docs/atlas/cli/current/command/atlas-accesslists-list/).
 2. Obtain the Atlas **project ID**, Cloudflare **zone ID** and a Cloudflare API token with DNS edit access scoped to the application zone. The workflow reads, deletes and recreates the exact streaming application CNAME. The tunnel, Jenkins and SonarQube hostnames, Cloudflare Access policies and ACM validation records are retained. The [Cloudflare DNS API](https://developers.cloudflare.com/api/resources/dns/subresources/records/) documents the required access.
-3. Authenticate the intended AWS profile with `aws sso login --profile streamingapp`. Run the two commands below. The configuration prompt hides the token and stores the settings outside Git. Environment variables override the saved values.
+3. Authenticate the intended profile using `aws sso login --profile streamingapp` for organization SSO or `aws login --profile streamingapp` for the personal login-based profile. Run the two commands below. The configuration prompt hides the token and stores the settings outside Git. Environment variables override the saved values.
+
+**Mac, repository root · local configuration and remote inspection.** Select the intended AWS profile/region and sign in to Atlas first. Expected result: a readable checkpoint configuration and a successful account/backend check.
 
 ```bash
 python3 scripts/dev-session.py configure
@@ -18,6 +20,8 @@ The check verifies the bootstrap account, initializes the existing dev backend, 
 ## End a session
 
 Finish active Jenkins builds and pause incoming changes. Use the same Git revision for teardown and the first restore. Record the branch/commit alongside your evidence. Run:
+
+**Mac, repository root · Manual approval required.** Uses the saved session settings; success means verified backups and an empty dev state.
 
 ```bash
 python3 scripts/dev-session.py down
@@ -35,6 +39,8 @@ The state bucket, ECR images, ACM certificate, private media, Secrets Manager ap
 ## Start the next session
 
 Renew authentication if needed, then run:
+
+**Mac, repository root · Manual approval required for provisioning and restore.** Use the same account, region and verified checkpoint. Expect recreated resources, healthy workloads and reachable endpoints.
 
 ```bash
 python3 scripts/dev-session.py up
@@ -57,4 +63,6 @@ The runner restores three encrypted gp3 volumes from the snapshots in their orig
 
 ## Completion status
 
-The manual dev workflow has demonstrated application deployment, CI, observability and recovery of Jenkins/SonarQube. The automatic full-cycle restore requires a live acceptance drill. Frontend image findings require rescanning the deployed digest and remediation where applicable. Automated Atlas backups with isolated restore verification, stage/prod environment isolation and promotion approvals remain project work. Treat a move to another AWS account as a new deployment and data migration, not a restore of this account's checkpoint.
+The manual dev workflow has demonstrated application deployment, CI, observability and recovery of Jenkins/SonarQube. The automatic full-cycle restore requires a live acceptance drill. Frontend image findings require rescanning the deployed digest and remediation where applicable. Automated Atlas backup and isolated restore validation, a healthy staging rollout, and production infrastructure and approval remain outstanding. Treat a move to another AWS account as a new deployment and data migration, not a restore of this account's checkpoint.
+
+Review [retained resources and billing checks](dev-cost-and-scope.md) before ending a session. For the separate staging environment see [delivery](delivery.md).

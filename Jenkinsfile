@@ -10,7 +10,7 @@ pipeline {
 
     parameters {
         booleanParam(name: 'DEPLOY_TO_DEV', defaultValue: true,
-            description: 'Deploy to dev, verify the rollout, then automatically promote the same images to staging. Clear to build, test, scan with SonarQube, and publish images only.')
+            description: 'Deploy the images from this build to dev and verify the rollout. Clear to build, test, scan with SonarQube, and publish images only.')
     }
 
     triggers {

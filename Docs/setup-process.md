@@ -4,15 +4,19 @@ Repository: **https://github.com/sairamraavi/CloudNativeDevopsPlatformAWS**
 
 Follow this guide in order. Each numbered step states where to run commands, what to configure, and what to verify before continuing. Commands assume Bash on a Mac unless a step says **Jenkins EC2**. Do not paste terminal prompts or Markdown link syntax into commands.
 
-This guide describes the **development environment implemented in this repository**: Docker → Terraform → ECR → EKS → Atlas/S3 → HTTPS → monitoring → Jenkins/SonarQube → webhook deployment → logging → backup and teardown. Staging/production isolation, promotion approvals, automated database backup/restore, and a tested full recovery workflow remain separate work; they are not completed by this guide.
+This guide describes the **development environment implemented in this repository**: Docker → Terraform → ECR → EKS → Atlas/S3 → HTTPS → monitoring → Jenkins/SonarQube → webhook deployment → logging → backup and teardown. Separate staging infrastructure and automatic promotion are covered in the delivery guide. Production, automated Atlas restore validation and a full scripted recovery drill remain outstanding.
 
 ## Before starting
 
-You need an AWS account with appropriate provisioning permissions, an AWS CLI SSO profile, Docker Desktop, Git, Terraform, kubectl, Helm, Ansible, Python 3, an Atlas account, and a domain managed in Cloudflare. SES email delivery and Cloudflare Tunnel are used later. AWS resources incur charges while running, including EKS, worker nodes, Jenkins, NAT gateways, load balancing, storage and logs.
+You need an AWS account with appropriate provisioning permissions, an authenticated AWS CLI profile, Docker Desktop, Git, Terraform, kubectl, Helm, Ansible, Python 3, an Atlas account, and a domain managed in Cloudflare. SES email delivery and Cloudflare Tunnel are used later. AWS resources incur charges while running, including EKS, worker nodes, Jenkins, NAT gateways, load balancing, storage and logs.
 
 The original implementation used Mumbai (`ap-south-1`), EKS 1.36, Terraform 1.15.8, Helm 4, Ubuntu 24.04 amd64 for Jenkins, and Node 24 container builds. These are recorded implementation versions, not a promise of current availability. Check regional EKS/add-on compatibility before provisioning. The checked-in Terraform pins are the source of truth.
 
 Keep passwords, tunnel tokens, private keys and backup archives outside Git. Do not screenshot secret values. Run cloud commands only after checking the active AWS identity.
+
+## Command conventions
+
+Blocks are reproducible procedures reconstructed from repository configuration and the recorded sessions. They are not a literal terminal transcript. Start at the repository root unless the block changes directory. Carry forward variables set by preceding steps in the same Bash session; keep backend metadata isolated per account and Terraform root. Jenkins EC2 commands use the Ubuntu account and sudo where shown. Run only the section needed. For an established dev environment, use the [checkpoint lifecycle](dev-lifecycle.md) before considering manual deletion. For the active single-job staging flow see the [delivery specification](delivery.md).
 
 ## Route through the guide
 
@@ -26,14 +30,18 @@ Keep passwords, tunnel tokens, private keys and backup archives outside Git. Do 
 
 **Mac:** clone only if you do not already have a checkout.
 
+**Mac · Operator action — may change local, host or cloud state** — checkout the implementation branch.
+
 ```bash
 git clone https://github.com/sairamraavi/CloudNativeDevopsPlatformAWS.git
 cd CloudNativeDevopsPlatformAWS
-git switch develop
+git switch feature/capstone-end-to-end
 git status --short
 ```
 
 Existing contributors can continue on their working branch; Jenkins must use the branch containing the committed changes.
+
+**Mac · Read-only inspection** — inspect tool versions.
 
 ```bash
 git --version
@@ -55,17 +63,22 @@ Start Docker Desktop if the Docker server is unavailable. Install missing tools 
 
 Create an SSO profile if needed using `aws configure sso`; use your organization's supplied start URL and permission set. Then set your own values:
 
+**Mac · Operator action — may change local, host or cloud state** — authenticate and verify caller.
+
 ```bash
 export AWS_PROFILE=streamingapp
 export AWS_REGION=ap-south-1
 export AWS_DEFAULT_REGION="$AWS_REGION"
 export AWS_PAGER=''
 export APP_DOMAIN=streaming.example.com
+# Use aws login --profile "$AWS_PROFILE" instead for the personal login-based profile.
 aws sso login --profile "$AWS_PROFILE"
 aws sts get-caller-identity --query '{Account:Account,Arn:Arn}' --output json
 ```
 
 Replace `streaming.example.com` with a subdomain you control. After confirming the displayed account is the intended account:
+
+**Mac · Operator action — may change local, host or cloud state** — bind the intended account and domain.
 
 ```bash
 export CAPSTONE_ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
@@ -81,6 +94,8 @@ These exports apply only to this terminal. Repeat them in a new terminal. `Expir
 
 **Mac, repository root:** copy the example only if `.env` does not exist.
 
+**Mac · Operator action — may change local, host or cloud state** — initialize private local settings.
+
 ```bash
 test -f StreamingApp/.env || cp StreamingApp/.env.example StreamingApp/.env
 git check-ignore StreamingApp/.env
@@ -88,6 +103,8 @@ openssl rand -hex 32 | tr -d '\n' | pbcopy
 ```
 
 Paste the generated value into `JWT_SECRET` privately. Keep the local frontend URLs on ports 3000–3004 as shown in `.env.example`. Compose supplies the local MongoDB connection. AWS placeholder credentials are not usable credentials; local login can be verified first, and cloud media access is configured through workload IAM roles later.
+
+**Mac · Operator action — may change local, host or cloud state** — build Compose and verify service health.
 
 ```bash
 docker compose -f StreamingApp/docker-compose.yml config --quiet
@@ -102,9 +119,11 @@ docker compose -f StreamingApp/docker-compose.yml exec mongo mongosh --quiet --e
 
 Open `http://localhost:3000`, register, log in and reload a nested route. Expected: health responses succeed, MongoDB returns `{ ok: 1 }`, and refresh does not return 404. Save evidence of the working application and health checks, not every command.
 
+![Local Compose containers running](screenshots/local-validation/01-containers-running.png)
+
 ## 4. Create or reconnect Terraform remote state
 
-There are three independent Terraform roots:
+The original dev lifecycle uses three independent Terraform roots. Staging adds Terraform/staging-data and Terraform/environments/staging.
 
 | Root | Purpose | Keep between development sessions? |
 | --- | --- | --- |
@@ -114,12 +133,16 @@ There are three independent Terraform roots:
 
 **Existing account with a configured backend:** run the following and keep the existing state bucket. Do not create a replacement or migrate to an empty backend.
 
+**Mac · Operator action — may change local, host or cloud state** — read the existing bootstrap plan.
+
 ```bash
 terraform -chdir=Terraform/bootstrap init
 terraform -chdir=Terraform/bootstrap plan -input=false
 ```
 
 **First deployment in a new account only:** the state bucket must exist before using the S3 backend. Temporarily disable the backend declaration, create the bucket using local state, then migrate that state:
+
+**Mac · Manual approval required — destructive or recovery-sensitive** — create and migrate initial state.
 
 ```bash
 mv Terraform/bootstrap/backend.tf Terraform/bootstrap/backend.tf.disabled
@@ -141,6 +164,8 @@ Answer `yes` to copy the existing local state. Keep any local state backups priv
 
 **Both paths:**
 
+**Mac · Read-only inspection** — verify the retained state.
+
 ```bash
 export CAPSTONE_STATE_BUCKET="$(terraform -chdir=Terraform/bootstrap output -raw terraform_state_bucket_name)"
 terraform -chdir=Terraform/bootstrap state list
@@ -150,6 +175,8 @@ terraform -chdir=Terraform/bootstrap plan -input=false
 Expected: protected state-bucket resources exist and the follow-up plan reports no changes. Save one screenshot of remote-state verification.
 
 ## 5. Provision persistent resources
+
+**Mac · Operator action — may change local, host or cloud state** — plan persistent resources.
 
 ```bash
 terraform -chdir=Terraform/persistent init \
@@ -163,6 +190,8 @@ terraform -chdir=Terraform/persistent plan -input=false -out=persistent.tfplan
 ```
 
 Review the plan, especially account, region, domain and CORS origins. Apply only the intended resources:
+
+**Mac · Operator action — may change local, host or cloud state** — provision persistent resources.
 
 ```bash
 terraform -chdir=Terraform/persistent apply persistent.tfplan
@@ -178,11 +207,15 @@ Expected: five ECR repositories, private media bucket, secret container, ACM cer
 
 ## 6. Validate the HTTPS certificate in Cloudflare
 
+**Mac · Read-only inspection** — obtain the DNS validation record.
+
 ```bash
 terraform -chdir=Terraform/persistent output application_certificate_dns_records
 ```
 
 In Cloudflare DNS, add each returned CNAME exactly as provided. Set validation records to **DNS only**. Leave these records in place for certificate renewal.
+
+**Mac · Read-only inspection** — check certificate issuance.
 
 ```bash
 aws acm describe-certificate --region "$AWS_REGION" \
@@ -198,6 +231,8 @@ Continue when status is `ISSUED`. Capture the certificate status; this is separa
 2. Create a database user with `readWrite` access to the `streamingapp` database. Store its password privately.
 3. Add your current Mac public IPv4 as a `/32` Atlas IP access entry for testing. Do not open access to all addresses.
 4. Copy your cluster's SRV hostname from Atlas Connect. Use the password prompt, not a password in shell history:
+
+**Mac · Operator action — may change local, host or cloud state** — test Atlas access.
 
 ```bash
 export ATLAS_HOST='replace-with-your-cluster.mongodb.net'
@@ -220,6 +255,8 @@ exit
 
 In AWS Secrets Manager, open `streamingapp-capstone/dev/application` and store two key/value pairs: `MONGO_URI` (complete Atlas URI with URL-encoded credentials and database name) and `JWT_SECRET` (generated random secret). Generate the JWT secret using the clipboard command in step 3. It is a signing secret, not a login token.
 
+**Mac · Read-only inspection** — verify a current secret version.
+
 ```bash
 aws secretsmanager list-secret-version-ids \
   --secret-id "$TF_VAR_application_secret_arn" \
@@ -231,6 +268,8 @@ Expected: a version marked `AWSCURRENT`. Screenshot version metadata only. Do no
 ## 8. Build and publish the first cloud images
 
 The first deployment needs images before Jenkins exists. Use the correct Docker build contexts below. Cloud frontend API URLs are build-time settings; changing a Kubernetes environment variable does not rebuild JavaScript.
+
+**Mac · Operator action — may change local, host or cloud state** — publish five release images.
 
 ```bash
 export ECR_REGISTRY="${CAPSTONE_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -249,10 +288,8 @@ done
 docker build --pull --platform linux/amd64 \
   --build-arg REACT_APP_AUTH_API_URL=/api \
   --build-arg REACT_APP_STREAMING_API_URL=/api \
-  --build-arg REACT_APP_STREAMING_PUBLIC_URL="https://$APP_DOMAIN" \
   --build-arg REACT_APP_ADMIN_API_URL=/api/admin \
   --build-arg REACT_APP_CHAT_API_URL=/api/chat \
-  --build-arg REACT_APP_CHAT_SOCKET_URL="https://$APP_DOMAIN" \
   -t "$ECR_REGISTRY/streamingapp-capstone-frontend:$IMAGE_TAG" StreamingApp/frontend
 docker run --rm --platform linux/amd64 \
   "$ECR_REGISTRY/streamingapp-capstone-frontend:$IMAGE_TAG" nginx -t
@@ -265,11 +302,15 @@ Stop if any build/push fails. Record the image tag. **Do not use `/api/streaming
 
 Inspect each image and query scans using the `linux/amd64` child digest when its tag points to an OCI image index:
 
+**Mac · Read-only inspection** — inspect image platforms.
+
 ```bash
 docker buildx imagetools inspect "$ECR_REGISTRY/streamingapp-capstone-frontend:$IMAGE_TAG"
 ```
 
 Copy the actual amd64 digest into the next command, replacing the placeholder:
+
+**Mac · Read-only inspection** — read scan findings.
 
 ```bash
 aws ecr describe-image-scan-findings \
@@ -280,9 +321,13 @@ aws ecr describe-image-scan-findings \
 
 Repeat for all five services. A completed scan with empty counts means no findings reported by that scan, not proof of complete security. The historical frontend release had unresolved findings; do not label it production-approved. Capture the scan summary and any remediation evidence.
 
+![Application images published to ECR](screenshots/local-validation/27-ecr-published-images.png)
+
 ## 9. Supply development infrastructure inputs
 
 Create the Jenkins SSH key only if it is absent. Never overwrite an existing key needed for recovery.
+
+**Mac · Operator action — may change local, host or cloud state** — prepare SSH identity and network inputs.
 
 ```bash
 test -s "$HOME/.ssh/streamingapp-capstone-jenkins" || \
@@ -297,6 +342,8 @@ export TF_VAR_nat_mode=per_az
 
 In IAM, locate the **IAM role ARN** of your SSO administrator role (not the STS assumed-role session ARN). In EC2, select a verified Canonical Ubuntu 24.04 amd64 AMI in your region. Set both values:
 
+**Mac · Operator action — may change local, host or cloud state** — set verified EKS inputs.
+
 ```bash
 export TF_VAR_eks_admin_role_arn='REPLACE_WITH_YOUR_IAM_ROLE_ARN'
 export TF_VAR_jenkins_ami_id='REPLACE_WITH_VERIFIED_REGIONAL_UBUNTU_AMI_ID'
@@ -305,6 +352,8 @@ export TF_VAR_jenkins_ami_id='REPLACE_WITH_VERIFIED_REGIONAL_UBUNTU_AMI_ID'
 These placeholders must be replaced before planning. The checked-in EKS configuration requires `per_az` NAT for its private-node design. Choose different AZs only after updating the configuration consistently.
 
 ## 10. Create EKS, networking and Jenkins EC2
+
+**Mac · Operator action — may change local, host or cloud state** — plan dev infrastructure.
 
 ```bash
 terraform -chdir=Terraform/environments/dev init \
@@ -319,12 +368,14 @@ terraform -chdir=Terraform/environments/dev plan -input=false -out=dev.tfplan
 
 Review all changes. On recreation, outputs such as public IPs, NAT IPs, VPC IDs and endpoints will change. Save the reviewed plan screenshot, then:
 
+**Mac · Operator action — may change local, host or cloud state** — provision dev and verify nodes.
+
 ```bash
 terraform -chdir=Terraform/environments/dev apply dev.tfplan
 export CAPSTONE_CLUSTER_NAME="$(terraform -chdir=Terraform/environments/dev output -raw eks_cluster_name)"
 export CAPSTONE_VPC_ID="$(terraform -chdir=Terraform/environments/dev output -raw vpc_id)"
 export CAPSTONE_JENKINS_IP="$(terraform -chdir=Terraform/environments/dev output -raw jenkins_public_ip)"
-aws eks update-kubeconfig --region "$AWS_REGION" --name "$CAPSTONE_CLUSTER_NAME" --alias streamingapp-capstone-dev
+aws eks update-kubeconfig --region "$AWS_REGION" --name "$CAPSTONE_CLUSTER_NAME" --alias streamingapp-capstone-dev --role-arn "$TF_VAR_eks_admin_role_arn"
 kubectl --context streamingapp-capstone-dev auth can-i list nodes
 kubectl --context streamingapp-capstone-dev get nodes -L topology.kubernetes.io/zone
 kubectl --context streamingapp-capstone-dev get pods -n kube-system
@@ -333,7 +384,11 @@ terraform -chdir=Terraform/environments/dev output nat_public_ips
 
 Expected: two Ready nodes across two AZs and healthy system pods. Add **both new NAT IPs as `/32` entries in Atlas**; remove obsolete NAT entries after replacement. Capture cluster readiness and Atlas access-list evidence.
 
+![Ready dev workers across two availability zones](screenshots/eks/06-nodes-ready-two-azs.png)
+
 ## 11. Install External Secrets and synchronize application credentials
+
+**Mac · Operator action — may change local, host or cloud state** — prepare the application namespace.
 
 ```bash
 kubectl --context streamingapp-capstone-dev create namespace streaming-app-dev --dry-run=client -o yaml |
@@ -344,6 +399,8 @@ helm search repo external-secrets/external-secrets --versions | head
 ```
 
 Select a compatible chart version and replace the placeholder below. The session's repository listing included 2.14.0; verify availability before using it.
+
+**Mac · Operator action — may change local, host or cloud state** — install secrets synchronization.
 
 ```bash
 export ESO_CHART_VERSION='REPLACE_WITH_SELECTED_VERSION'
@@ -364,6 +421,8 @@ Continue only after synchronization succeeds. Save readiness evidence without de
 
 ## 12. Install the AWS Load Balancer Controller
 
+**Mac · Operator action — may change local, host or cloud state** — install the ALB controller.
+
 ```bash
 helm repo add eks https://aws.github.io/eks-charts
 helm repo update eks
@@ -382,6 +441,8 @@ kubectl --context streamingapp-capstone-dev get ingressclass alb
 Expected: controller 2/2 Ready and ingress class `alb`. The chart version matches the checked-in v2.14.1 IAM policy.
 
 ## 13. Install the application with this deployment's values
+
+**Mac · Operator action — may change local, host or cloud state** — deploy application with Helm.
 
 ```bash
 export CAPSTONE_ADMIN_MEDIA_ROLE="$(terraform -chdir=Terraform/environments/dev output -json media_workload_role_arns | python3 -c 'import json,sys; print(json.load(sys.stdin)["admin"])')"
@@ -406,12 +467,16 @@ Expected: all five deployments ready and an ALB hostname appears on the ingress.
 
 ## 14. Point DNS at the ALB and test the public application
 
+**Mac · Read-only inspection** — inspect ingress hostname.
+
 ```bash
 kubectl --context streamingapp-capstone-dev get ingress streamingapp -n streaming-app-dev \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}{"\n"}'
 ```
 
 Create your application's Cloudflare CNAME pointing to that hostname, **DNS only** for the initial ACM/ALB validation. Do not replace the certificate validation CNAME.
+
+**Mac · Read-only inspection** — verify DNS and HTTPS.
 
 ```bash
 dig +short CNAME "$APP_DOMAIN"
@@ -427,6 +492,8 @@ Capture only major proof: HTTPS, login/API routing, S3 upload, playback, two-use
 
 The current Terraform root includes metrics-server and EBS CSI resources; do not install duplicate copies manually.
 
+**Mac · Operator action — may change local, host or cloud state** — verify metrics and create storage class.
+
 ```bash
 kubectl --context streamingapp-capstone-dev top nodes
 kubectl --context streamingapp-capstone-dev top pods -n streaming-app-dev
@@ -438,12 +505,16 @@ kubectl --context streamingapp-capstone-dev get storageclass capstone-gp3-encryp
 
 To reproduce the bounded frontend HPA test:
 
+**Mac · Operator action — may change local, host or cloud state** — start bounded HPA load.
+
 ```bash
 kubectl --context streamingapp-capstone-dev apply -f tests/frontend-hpa-load.yaml
 kubectl --context streamingapp-capstone-dev get hpa frontend -n streaming-app-dev --watch
 ```
 
 Ctrl+C ends the watch. After collecting scale-up evidence:
+
+**Mac · Manual approval required — destructive or recovery-sensitive** — remove load and inspect HPA.
 
 ```bash
 kubectl --context streamingapp-capstone-dev logs job/frontend-hpa-load -n streaming-app-dev
@@ -454,6 +525,8 @@ kubectl --context streamingapp-capstone-dev get hpa frontend -n streaming-app-de
 Allow the configured five-minute downscale stabilization period. Capture scale-down once it returns to one replica. HPA scales pods; Cluster Autoscaler scales worker nodes.
 
 ## 16. Install Cluster Autoscaler
+
+**Mac · Operator action — may change local, host or cloud state** — install autoscaler.
 
 ```bash
 export CAPSTONE_AUTOSCALER_ROLE="$(terraform -chdir=Terraform/environments/dev output -raw autoscaler_role_arn)"
@@ -474,6 +547,8 @@ The values pin the autoscaler image to Kubernetes minor 1.36; do not rely on the
 ## 17. Prepare monitoring passwords and install Prometheus/Grafana
 
 Create the namespace, then create the Grafana admin Secret using a temporary private directory. These commands do not print the password:
+
+**Mac · Operator action — may change local, host or cloud state** — install monitoring.
 
 ```bash
 kubectl --context streamingapp-capstone-dev create namespace monitoring --dry-run=client -o yaml |
@@ -506,9 +581,13 @@ The two initial overrides avoid referencing an email configuration that is not c
 
 Open separate Mac terminals and keep each port-forward running:
 
+**Mac · Operator action — may change local, host or cloud state** — open a local monitoring tunnel.
+
 ```bash
 kubectl --context streamingapp-capstone-dev port-forward -n monitoring service/monitoring-grafana 3000:80
 ```
+
+**Mac · Operator action — may change local, host or cloud state** — open a local monitoring tunnel.
 
 ```bash
 kubectl --context streamingapp-capstone-dev port-forward -n monitoring service/monitoring-kube-prometheus-prometheus 9090:9090
@@ -523,6 +602,8 @@ Use `http://localhost:3000` for Grafana (choose 3005:80 if the local app uses 30
 3. Edit `Monitoring/alertmanager-email.yaml`: use your recipient, verified sender and regional SMTP hostname. Leave the `__SES_SMTP_USERNAME__` marker until rendering. `authUsername` is a string; `authPassword` is a Secret reference.
 4. Create `monitoring/alertmanager-ses-smtp` with `username` and `password` keys privately. Use the temporary-file pattern from step 17, substituting these two filenames and Secret name. Do not commit the values.
 Use this command sequence for step 4:
+
+**Mac · Operator action — may change local, host or cloud state** — store SMTP credentials privately.
 
 ```bash
 CAPSTONE_SMTP_DIR="$(mktemp -d)"
@@ -543,6 +624,8 @@ rm -r "$CAPSTONE_SMTP_DIR"
 
 5. Render the username from the Secret into the configuration and apply it without displaying credentials:
 
+**Mac · Operator action — may change local, host or cloud state** — configure routing and fire the test.
+
 ```bash
 python3 - <<'PYSES'
 import base64, json, pathlib, subprocess
@@ -557,20 +640,28 @@ helm upgrade monitoring prometheus-community/kube-prometheus-stack \
   --version 92.16.1 --kube-context streamingapp-capstone-dev -n monitoring \
   --reuse-values --set-string alertmanager.alertmanagerSpec.alertmanagerConfiguration.name=capstone-email \
   --wait --timeout 10m
-kubectl --context streamingapp-capstone-dev apply -f tests/monitoring-email-alert.yaml
+kubectl patch --local -f tests/monitoring-email-alert.yaml --type=json -p='[{"op":"replace","path":"/spec/groups/0/rules/0/expr","value":"vector(1) == 1"}]' -o yaml | kubectl --context streamingapp-capstone-dev -n monitoring apply -f -
 ```
 
-Wait for the test alert to fire and arrive in the inbox. Confirm delivery rather than just a firing rule. Then remove the synthetic rule:
+Wait for the test alert to fire and arrive in the inbox. Confirm delivery rather than just a firing rule. Restore the inactive rule, wait for the resolved email, then remove the test rule:
+
+**Mac · Manual approval required — destructive or recovery-sensitive** — resolve and remove the test rule.
 
 ```bash
-kubectl --context streamingapp-capstone-dev delete -f tests/monitoring-email-alert.yaml
+kubectl --context streamingapp-capstone-dev -n monitoring apply -f tests/monitoring-email-alert.yaml
+# Continue only after the resolved notification arrives.
+kubectl --context streamingapp-capstone-dev -n monitoring delete -f tests/monitoring-email-alert.yaml
 ```
 
 Capture firing and resolved emails. SES usage is billable subject to account allowances; do not assume it is free.
 
+![Synthetic alert routed in Alertmanager](screenshots/eks/36-alertmanager-test-alert.png)
+
 ## 19. Configure the Jenkins host through Ansible
 
 **Mac, repository root:** refresh the current EC2 IP rather than reusing an earlier session's address.
+
+**Mac · Operator action — may change local, host or cloud state** — connect to the current Jenkins EC2.
 
 ```bash
 export CAPSTONE_JENKINS_IP="$(terraform -chdir=Terraform/environments/dev output -raw jenkins_public_ip)"
@@ -578,6 +669,8 @@ ssh -i "$HOME/.ssh/streamingapp-capstone-jenkins" "ubuntu@$CAPSTONE_JENKINS_IP"
 ```
 
 Confirm the host fingerprint using trusted EC2 information before accepting a new key. Exit back to the Mac. Customize `Ansible/roles/nginx/defaults/main.yml` for your Jenkins and SonarQube hostnames. Review version pins in `Ansible/group_vars/all/main.yml`.
+
+**Mac · Operator action — may change local, host or cloud state** — configure EC2 and verify Jenkins identity.
 
 ```bash
 cd Ansible
@@ -593,6 +686,8 @@ Cloudflared is deliberately deferred until a valid private token exists. Confirm
 
 Open Jenkins through an SSH tunnel **from the Mac**, not inside EC2:
 
+**Mac · Operator action — may change local, host or cloud state** — open local SSH forwards.
+
 ```bash
 ssh -i "$HOME/.ssh/streamingapp-capstone-jenkins" -N \
   -L 18080:127.0.0.1:8080 -L 19000:127.0.0.1:9000 "ubuntu@$CAPSTONE_JENKINS_IP"
@@ -601,6 +696,8 @@ ssh -i "$HOME/.ssh/streamingapp-capstone-jenkins" -N \
 Visit `http://127.0.0.1:18080`. For a fresh installation, obtain the initial admin password privately on EC2 using `sudo cat /var/lib/jenkins/secrets/initialAdminPassword`, finish the wizard and create an administrator. Never screenshot that password.
 
 ## 20. Give Jenkins its Kubernetes context
+
+**Mac · Operator action — may change local, host or cloud state** — configure Jenkins EKS access.
 
 ```bash
 cd Ansible
@@ -621,11 +718,15 @@ Copy `Monitoring/sonarqube/compose.yaml` to `/opt/capstone-sonarqube/compose.yam
 
 **Mac, repository root:** transfer the checked-in Compose file:
 
+**Mac · Operator action — may change local, host or cloud state** — transfer the Compose definition.
+
 ```bash
 scp -i "$HOME/.ssh/streamingapp-capstone-jenkins" Monitoring/sonarqube/compose.yaml "ubuntu@$CAPSTONE_JENKINS_IP:/tmp/capstone-sonarqube-compose.yaml"
 ```
 
 **Jenkins EC2:** create the directory and install the file:
+
+**Jenkins EC2 · Operator action — may change local, host or cloud state** — prepare the SonarQube directory.
 
 ```bash
 sudo install -d -m 750 /opt/capstone-sonarqube
@@ -643,6 +744,8 @@ SONAR_DB_PASSWORD=YOUR_PRIVATE_RANDOM_PASSWORD
 ```
 
 **Jenkins EC2:**
+
+**Jenkins EC2 · Operator action — may change local, host or cloud state** — start SonarQube and verify status.
 
 ```bash
 sudo chmod 600 /opt/capstone-sonarqube/.env
@@ -674,7 +777,7 @@ Install the Pipeline, Git, GitHub, SonarQube Scanner and Prometheus metrics plug
 3. Repository: your repository URL; use a read credential if private.
 4. Branch specifier: the branch containing the Jenkinsfile, e.g. `*/develop` or `*/feature/capstone-end-to-end`.
 5. Script path: `Jenkinsfile`.
-6. Save and choose **Build Now**.
+6. Save and run the job. With DEPLOY_TO_DEV enabled, the root Jenkinsfile automatically promotes after dev verification. Complete the [staging preparation](delivery.md) first for an end-to-end run.
 
 The first manual application installation in step 13 is required: the current pipeline uses `helm upgrade`, not first-install provisioning. Expected sequence: checkout → tests → SonarQube gate → tool/identity/access checks → build → ECR push → Helm upgrade → rollout/HTTPS checks. Save a successful full pipeline screenshot and quality-gate evidence. Do not treat only the initial verification stages as a completed deployment pipeline.
 
@@ -693,6 +796,8 @@ The two nginx listeners are loopback-only. Jenkins metrics use the **private EC2
 
 **Mac:**
 
+**Mac · Operator action — may change local, host or cloud state** — configure the tunnel service.
+
 ```bash
 cd Ansible
 ansible-playbook playbooks/jenkins.yml -e @group_vars/all/main.yml --tags cloudflared
@@ -707,6 +812,8 @@ In GitHub repository Settings → Webhooks add `https://YOUR_JENKINS_HOST/github
 
 Verify the Prometheus plugin endpoint on **Jenkins EC2**:
 
+**Jenkins EC2 · Read-only inspection** — verify local metrics and nginx.
+
 ```bash
 curl --fail --silent --show-error http://127.0.0.1:8080/prometheus/ | head
 sudo nginx -t
@@ -714,16 +821,21 @@ sudo nginx -t
 
 Get the current private address from Terraform on the Mac:
 
+**Mac · Read-only inspection** — read current Jenkins private IP.
+
 ```bash
-terraform -chdir=Terraform/environments/dev output -raw jenkins_private_ip
+CAPSTONE_JENKINS_PRIVATE_IP="$(terraform -chdir=Terraform/environments/dev output -raw jenkins_private_ip)"
 ```
 
-Replace the old Jenkins target in `Monitoring/kube-prometheus-stack-values.yaml` with this private IP plus `:8082`. Ensure the Terraform security-group rule permits the intended monitoring source. Reapply the complete values file now that `capstone-email` exists:
+Use the current Jenkins private IP plus port 8082 as the scrape target. Ensure the Terraform security-group rule permits the intended monitoring source. Reapply the complete values file now that `capstone-email` exists:
+
+**Mac · Operator action — may change local, host or cloud state** — update the Jenkins scrape target.
 
 ```bash
 helm upgrade monitoring prometheus-community/kube-prometheus-stack \
   --version 92.16.1 --kube-context streamingapp-capstone-dev -n monitoring \
-  -f Monitoring/kube-prometheus-stack-values.yaml --wait --timeout 10m
+  -f Monitoring/kube-prometheus-stack-values.yaml \
+  --set-string "prometheus.prometheusSpec.additionalScrapeConfigs[0].static_configs[0].targets[0]=$CAPSTONE_JENKINS_PRIVATE_IP:8082" --wait --timeout 10m
 ```
 
 Query `up{job="jenkins"}` in Prometheus; expected value is 1. Import `Monitoring/dashboards/jenkins-monitoring.json` into Grafana and select the Prometheus data source. Capture a populated dashboard, not an empty one.
@@ -731,6 +843,8 @@ Query `up{job="jenkins"}` in Prometheus; expected value is 1. Import `Monitoring
 ## 25. Verify CloudWatch application and Jenkins logs
 
 Terraform creates log groups and IAM access. Ansible installs/configures the Jenkins CloudWatch agent. For application logs, install Fluent Bit with the role from this deployment:
+
+**Mac · Operator action — may change local, host or cloud state** — inspect logging role and chart.
 
 ```bash
 export CAPSTONE_LOG_ROLE="$(terraform -chdir=Terraform/environments/dev output -raw application_logs_role_arn)"
@@ -740,6 +854,8 @@ helm search repo fluent/fluent-bit --versions | head
 ```
 
 Select and record a compatible chart version, replacing the placeholder:
+
+**Mac · Operator action — may change local, host or cloud state** — install log collector and inspect delivery.
 
 ```bash
 export FLUENT_BIT_CHART_VERSION='REPLACE_WITH_SELECTED_VERSION'
@@ -759,6 +875,8 @@ If Jenkins logs are empty, on **EC2**, inspect `sudo journalctl -u jenkins.servi
 ## 26. Enable ALB access logs
 
 The persistent root creates a private log bucket with a delivery policy and three-day expiration. Preserve the existing idle-timeout attribute while adding access-log attributes:
+
+**Mac · Operator action — may change local, host or cloud state** — enable ALB request logging.
 
 ```bash
 helm upgrade streamingapp helm/streamingapp \
@@ -789,6 +907,8 @@ A directory with only the first two files is **incomplete**. Backups contain cre
 
 After copying the complete backup to a private Mac location, verify **inside that directory**, not the repository:
 
+**Mac · Read-only inspection** — verify all four backup checksums.
+
 ```bash
 cd /absolute/path/to/your/private/capstone-backup-directory
 shasum -a 256 -c SHA256SUMS
@@ -797,6 +917,8 @@ shasum -a 256 -c SHA256SUMS
 Expected: all four archives report OK. Checksum success proves transfer integrity, not restore success. A new host restoration must still validate Jenkins ownership, compatible SonarQube/PostgreSQL versions, credentials, current kubeconfig, tunnel token and changed network addresses. Preserve Grafana dashboard JSON separately if its PVC will be deleted.
 
 If restarting SonarQube after backup, use explicit paths so a changed working directory cannot break startup. **EC2:**
+
+**Jenkins EC2 · Operator action — may change local, host or cloud state** — restart backed-up services.
 
 ```bash
 sudo systemctl start jenkins
@@ -811,6 +933,8 @@ This step deletes the application and monitoring data in the development cluster
 
 **Mac, repository root:**
 
+**Mac · Manual approval required — destructive or recovery-sensitive** — remove app and monitoring releases.
+
 ```bash
 export CAPSTONE_VPC_ID="$(terraform -chdir=Terraform/environments/dev output -raw vpc_id)"
 kubectl --context streamingapp-capstone-dev get pv \
@@ -824,6 +948,8 @@ kubectl --context streamingapp-capstone-dev get pvc -n monitoring
 
 Wait for the ALB to disappear. After confirming you accept loss of the remaining monitoring volumes:
 
+**Mac · Manual approval required — destructive or recovery-sensitive** — delete monitoring storage and plan teardown.
+
 ```bash
 kubectl --context streamingapp-capstone-dev delete pvc --all -n monitoring --wait=true --timeout=5m
 kubectl --context streamingapp-capstone-dev get pv
@@ -831,6 +957,8 @@ terraform -chdir=Terraform/environments/dev plan -destroy -input=false -out=dest
 ```
 
 Review the destroy plan and ensure it is the **dev** root, then:
+
+**Mac · Manual approval required — destructive or recovery-sensitive** — destroy reviewed dev resources.
 
 ```bash
 terraform -chdir=Terraform/environments/dev apply destroy-dev.tfplan
@@ -858,6 +986,8 @@ Do not reuse a saved Terraform plan from before teardown, an old ALB hostname or
 ### Restore the dev Jenkins and SonarQube host
 
 After Terraform recreates the dev host, sign in with the intended AWS profile. Verify its SSH host fingerprint and accept it once as in step 19. From the repository root on your Mac, run:
+
+**Mac · Manual approval required — destructive or recovery-sensitive** — restore dev tooling.
 
 ```bash
 export AWS_PROFILE=streamingapp
@@ -892,4 +1022,4 @@ The playbook waits for Jenkins login through nginx on port 8081 and for SonarQub
 
 Use [screenshots/eks](screenshots/eks) and the other screenshot folders for existing evidence. Capture only milestone results. The previous run includes application, IAM, HPA, monitoring, CI/CD, log delivery and teardown screenshots; do not represent them as proof of a new run without repeating verification.
 
-See the [architecture directory](../Architecture), [Terraform guide](../Terraform/README.md), [Ansible guide](../Ansible/README.md), and source configuration for implementation details. Before a production rollout, complete account/environment parameterization, staging/prod separation and approvals, image-vulnerability remediation, automated tested backups/restores, and recovery testing. The current development setup and manual bootstrap steps do not establish production readiness by themselves.
+See the [architecture directory](../Architecture), [Terraform guide](../Terraform/README.md), [Ansible guide](../Ansible/README.md), and source configuration for implementation details. Before a production rollout, finish staging acceptance, production infrastructure and approval, image remediation, isolated database restore and automated recovery testing. The current development setup and manual bootstrap steps do not establish production readiness by themselves.
