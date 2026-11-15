@@ -1,0 +1,52 @@
+---
+- name: Install Nginx
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install WebSocket connection map
+  ansible.builtin.template:
+    src: jenkins-websocket-map.conf.j2
+    dest: /etc/nginx/conf.d/jenkins-websocket-map.conf
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  notify: Reload capstone nginx
+
+- name: Install capstone Nginx sites
+  ansible.builtin.template:
+    src: "{{ item }}.conf.j2"
+    dest: "/etc/nginx/sites-available/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  loop: "{{ capstone_nginx_sites }}"
+  notify: Reload capstone nginx
+
+- name: Disable default Nginx site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload capstone nginx
+
+- name: Enable capstone Nginx sites
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/{{ item }}"
+    dest: "/etc/nginx/sites-enabled/{{ item }}"
+    state: link
+  loop: "{{ capstone_nginx_sites }}"
+  notify: Reload capstone nginx
+
+- name: Validate complete Nginx configuration
+  ansible.builtin.command: /usr/sbin/nginx -t
+  changed_when: false
+
+- name: Enable and start Nginx
+  ansible.builtin.systemd_service:
+    name: nginx
+    enabled: true
+    state: started

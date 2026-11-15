@@ -1,6 +1,6 @@
 # StreamingApp
 
-Stream premium video content, host live watch parties, and manage your catalogue with a modern microservice architecture. The platform now ships with a production-ready admin portal, real-time chat, S3-backed adaptive streaming, and a redesigned cinematic frontend experience.
+Stream premium video content, host live watch parties, and manage your catalogue with a modern microservice architecture. The platform now ships with a dedicated admin portal, real-time chat, S3-backed adaptive streaming, and a redesigned cinematic frontend experience.
 
 ## Architecture
 
@@ -23,7 +23,7 @@ Create an `.env` for each service (or export variables before running). All serv
 ```ini
 PORT=3001
 MONGO_URI=mongodb://localhost:27017/streamingapp
-JWT_SECRET=changeme
+JWT_SECRET=<generate-a-private-random-value>
 CLIENT_URLS=http://localhost:3000
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
@@ -35,7 +35,7 @@ AWS_S3_BUCKET=
 ```ini
 PORT=3002
 MONGO_URI=mongodb://localhost:27017/streamingapp
-JWT_SECRET=changeme
+JWT_SECRET=<generate-a-private-random-value>
 CLIENT_URLS=http://localhost:3000
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
@@ -49,7 +49,7 @@ STREAMING_PUBLIC_URL=http://localhost:3002
 ```ini
 PORT=3003
 MONGO_URI=mongodb://localhost:27017/streamingapp
-JWT_SECRET=changeme
+JWT_SECRET=<generate-a-private-random-value>
 CLIENT_URLS=http://localhost:3000
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
@@ -61,7 +61,7 @@ AWS_S3_BUCKET=
 ```ini
 PORT=3004
 MONGO_URI=mongodb://localhost:27017/streamingapp
-JWT_SECRET=changeme
+JWT_SECRET=<generate-a-private-random-value>
 CLIENT_URLS=http://localhost:3000
 ```
 
@@ -78,9 +78,9 @@ REACT_APP_CHAT_SOCKET_URL=http://localhost:3004
 ## Running with Docker Compose
 
 1. Populate the environment variables above (or rely on the defaults baked into `docker-compose.yml`).
-2. Build and start the stack:
+2. From StreamingApp/ on the Mac, build and start local containers. This changes local Docker state. Use the private environment settings above; expect the frontend on localhost:3000.
    ```bash
-   docker-compose up --build
+   docker compose up --build
    ```
 3. Navigate to `http://localhost:3000` for the web app.
 
@@ -88,7 +88,7 @@ The compose file provisions MongoDB plus all four Node.js microservices. S3 cred
 
 ## Local Development
 
-Install dependencies for each service:
+From StreamingApp/ on the Mac, install dependencies for each service. This writes local node_modules; it requires Node/npm and no AWS session.
 
 ```bash
 # auth service
@@ -107,7 +107,7 @@ cd ../chatService && npm install
 cd ../../frontend && npm install
 ```
 
-Run the services (in separate terminals) after starting MongoDB:
+Start each service from StreamingApp/ in its own Mac terminal after starting MongoDB. These commands start local processes using the private environment settings above. Expect the ports listed in the architecture table:
 
 ```bash
 cd backend/authService && npm run dev
@@ -127,7 +127,7 @@ cd frontend && npm start
 
 ## Testing
 
-Automated tests are not yet included. Recommended smoke checks:
+Jenkins runs the admin middleware tests and the frontend route tests before SonarQube analysis. The historical suites passed six and seven tests, respectively. See the [delivery guide](../Docs/delivery.md) for the containerized commands and expected results. Functional smoke checks:
 
 1. Register and log in through the web UI.
 2. Upload a small video + thumbnail via the admin dashboard (requires valid S3 credentials).

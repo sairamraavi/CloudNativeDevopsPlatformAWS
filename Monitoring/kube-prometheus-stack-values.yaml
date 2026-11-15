@@ -59,8 +59,7 @@ prometheus:
         scrape_interval: 30s
         scrape_timeout: 15s
         static_configs:
-          - targets:
-              - "10.0.0.152:8082"
+          - targets: [] # Supply the current Jenkins private endpoint during deployment.
             labels:
               project: streamingapp-capstone
               environment: dev

@@ -4,8 +4,7 @@ fullnameOverride: fluent-bit
 serviceAccount:
   create: true
   name: fluent-bit
-  annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::175200623108:role/streamingapp-capstone-dev-application-logs
+  annotations: {}
 
 rbac:
   create: true

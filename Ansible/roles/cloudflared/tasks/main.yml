@@ -1,0 +1,102 @@
+---
+- name: Require Ubuntu amd64
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['distribution'] == 'Ubuntu'
+      - ansible_facts['architecture'] == 'x86_64'
+
+- name: Check existing tunnel token
+  ansible.builtin.stat:
+    path: "{{ capstone_cloudflared_token_path }}"
+    get_checksum: false
+  register: capstone_tunnel_token
+
+- name: Require a private token when provisioning a new server
+  ansible.builtin.assert:
+    that:
+      - >-
+        (capstone_tunnel_token.stat.exists and
+         (capstone_tunnel_token.stat.size | default(0) > 0))
+        or
+        (vault_cloudflared_tunnel_token | default('') | trim | length > 0)
+    fail_msg: "Supply vault_cloudflared_tunnel_token through Ansible Vault."
+  no_log: true
+
+- name: Read installed packages
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Download pinned Cloudflared package when absent
+  ansible.builtin.get_url:
+    url: "https://github.com/cloudflare/cloudflared/releases/download/{{ capstone_cloudflared_version }}/cloudflared-linux-amd64.deb"
+    dest: "/var/tmp/cloudflared-{{ capstone_cloudflared_version }}.deb"
+    owner: root
+    group: root
+    mode: "0644"
+  when: "'cloudflared' not in ansible_facts.packages"
+
+- name: Install Cloudflared when absent
+  ansible.builtin.apt:
+    deb: "/var/tmp/cloudflared-{{ capstone_cloudflared_version }}.deb"
+  when: "'cloudflared' not in ansible_facts.packages"
+
+- name: Create private Cloudflared directory
+  ansible.builtin.file:
+    path: /etc/cloudflared
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Supply token only when the file is absent
+  ansible.builtin.copy:
+    content: "{{ vault_cloudflared_tunnel_token | trim }}"
+    dest: "{{ capstone_cloudflared_token_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+    force: false
+  when: not capstone_tunnel_token.stat.exists
+  no_log: true
+  diff: false
+
+- name: Enforce token file permissions
+  ansible.builtin.file:
+    path: "{{ capstone_cloudflared_token_path }}"
+    state: file
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Verify token file is nonempty
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/test
+      - -s
+      - "{{ capstone_cloudflared_token_path }}"
+  changed_when: false
+
+- name: Preserve Cloudflared systemd service
+  ansible.builtin.template:
+    src: cloudflared.service.j2
+    dest: /etc/systemd/system/cloudflared.service
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  register: capstone_cloudflared_unit
+
+- name: Reload systemd definitions when changed
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  when: capstone_cloudflared_unit.changed
+
+- name: Enable Cloudflared and start it only if stopped
+  ansible.builtin.systemd_service:
+    name: cloudflared
+    enabled: true
+    state: started
+
+- name: Verify service is active
+  ansible.builtin.command: systemctl is-active cloudflared
+  changed_when: false

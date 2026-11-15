@@ -1,5 +1,7 @@
 # StreamingApp architecture: design, creation steps, and connections
 
+This is the original design and connection register. The [implementation and evidence index](evidence-index.md) distinguishes deployed features from the production design. Cloudflare DNS, ALB Ingress, SES email and the shared Jenkins controller are the implemented paths.
+
 | Document field | Value |
 | --- | --- |
 | Project | Cloud Native DevOps Platform AWS — StreamingApp capstone |
@@ -17,7 +19,7 @@ This document explains the StreamingApp architecture, records how its editable d
 
 The diagram combines source control, Jenkins delivery automation, AWS networking, Kubernetes workloads, scaling, storage, monitoring, security, and recovery. The repository currently contains the architecture artifacts and project overview; this document does not claim that Terraform, Jenkins, Kubernetes, or recovery tests have already been implemented or executed.
 
-![StreamingApp production DevOps architecture](../Architecture/StreamingApp-Production-DevOps-Architecture.png)
+[Open the architecture diagram](../Architecture/StreamingApp-Production-DevOps-Architecture.png)
 
 The image is for reading and presentation. The `.drawio` file is the editable source of truth. It contains **337 editable objects and 55 connectors**: 51 architecture, automation, or annotation connections and four legend examples. These counts include labels, icons, containers, and branch annotations; they are not counts of deployed AWS resources.
 

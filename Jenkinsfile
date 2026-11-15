@@ -4,8 +4,13 @@ pipeline {
     options {
         skipDefaultCheckout(true)
         disableConcurrentBuilds()
-        timeout(time: 40, unit: 'MINUTES')
+        timeout(time: 55, unit: 'MINUTES')
         buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    parameters {
+        booleanParam(name: 'DEPLOY_TO_DEV', defaultValue: true,
+            description: 'Deploy the images from this build to dev and verify the rollout. Clear to build, test, scan with SonarQube, and publish images only.')
     }
 
     triggers {
@@ -103,7 +108,8 @@ pipeline {
                     account="$(aws sts get-caller-identity \
                       --query Account --output text)"
 
-                    test "$account" = "175200623108"
+                    configured_cluster="$(kubectl config view --context streamingapp-capstone-dev --minify -o jsonpath='{.contexts[0].context.cluster}')"
+                    test "$configured_cluster" = "arn:aws:eks:$AWS_REGION:$account:cluster/streamingapp-capstone-dev-eks"
                 '''
             }
         }
@@ -131,8 +137,10 @@ pipeline {
                     ).trim()
 
                     env.IMAGE_TAG = "${commit}-${env.BUILD_NUMBER}"
-                    env.ECR_REGISTRY =
-                        '175200623108.dkr.ecr.ap-south-1.amazonaws.com'
+                    def account = sh(script: 'aws sts get-caller-identity --query Account --output text', returnStdout: true).trim()
+                    env.ECR_REGISTRY = "${account}.dkr.ecr.${env.AWS_REGION}.amazonaws.com"
+                    env.APP_HOST = sh(script: "kubectl --context streamingapp-capstone-dev -n streaming-app-dev get ingress streamingapp -o jsonpath='{.spec.rules[0].host}'", returnStdout: true).trim()
+                    if (!env.APP_HOST) { error('Missing streamingapp ingress hostname') }
                 }
             }
         }
@@ -156,10 +164,8 @@ pipeline {
                     docker build --pull --platform linux/amd64 \
                     --build-arg REACT_APP_AUTH_API_URL=/api \
                     --build-arg REACT_APP_STREAMING_API_URL=/api \
-                    --build-arg REACT_APP_STREAMING_PUBLIC_URL=https://streaming.sairamraavi.com \
                     --build-arg REACT_APP_ADMIN_API_URL=/api/admin \
                     --build-arg REACT_APP_CHAT_API_URL=/api/chat \
-                    --build-arg REACT_APP_CHAT_SOCKET_URL=https://streaming.sairamraavi.com \
                     -t "$ECR_REGISTRY/streamingapp-capstone-frontend:$IMAGE_TAG" \
                     StreamingApp/frontend
 
@@ -198,11 +204,13 @@ pipeline {
         }
 
         stage('Deploy to EKS') {
+            when { expression { params.DEPLOY_TO_DEV } }
             steps {
                 sh '''
                     set -eu
 
-                    helm lint helm/streamingapp
+                    helm get values streamingapp --kube-context streamingapp-capstone-dev --namespace streaming-app-dev -o yaml |
+                    helm lint helm/streamingapp -f - --set-string image.registry="$ECR_REGISTRY" --set-string image.tag="$IMAGE_TAG" --set-string frontend.tag="$IMAGE_TAG"
 
                     helm upgrade streamingapp helm/streamingapp \
                     --kube-context streamingapp-capstone-dev \
@@ -219,6 +227,7 @@ pipeline {
         }
 
         stage('Post-Deployment Verification') {
+            when { expression { params.DEPLOY_TO_DEV } }
             steps {
                 sh '''
                     set -eu
@@ -240,13 +249,21 @@ pipeline {
                     status="$(curl --silent --show-error \
                     --max-time 30 --output /dev/null \
                     --write-out '%{http_code}' \
-                    https://streaming.sairamraavi.com/)"
+                    "https://$APP_HOST/")"
 
                     test "$status" = "200"
 
                     kubectl --context streamingapp-capstone-dev \
                     get deployments,pods,hpa -n streaming-app-dev
                 '''
+            }
+        }
+        stage('Promote to Staging') {
+            when { expression { params.DEPLOY_TO_DEV } }
+            steps {
+                withEnv(["RELEASE_TAG=${env.IMAGE_TAG}"]) {
+                    sh 'bash scripts/staging/promote.sh'
+                }
             }
         }
 
