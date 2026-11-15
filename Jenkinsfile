@@ -4,13 +4,15 @@ pipeline {
     options {
         skipDefaultCheckout(true)
         disableConcurrentBuilds()
-        timeout(time: 40, unit: 'MINUTES')
+        timeout(time: 55, unit: 'MINUTES')
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
 
     parameters {
         booleanParam(name: 'DEPLOY_TO_DEV', defaultValue: true,
             description: 'Deploy the images from this build to dev and verify the rollout. Clear to build, test, scan with SonarQube, and publish images only.')
+        booleanParam(name: 'PROMOTE_TO_STAGING', defaultValue: false,
+            description: 'For manual builds, promote the same five images after dev verification. GitHub push builds promote automatically. Requires DEPLOY_TO_DEV.')
     }
 
     triggers {
@@ -27,6 +29,11 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                script {
+                    if (params.PROMOTE_TO_STAGING && !params.DEPLOY_TO_DEV) {
+                        error('Select DEPLOY_TO_DEV when promoting this build to staging.')
+                    }
+                }
                 checkout scm
                 sh 'git log -1 --format="%h %s"'
             }
@@ -256,6 +263,22 @@ pipeline {
                     kubectl --context streamingapp-capstone-dev \
                     get deployments,pods,hpa -n streaming-app-dev
                 '''
+            }
+        }
+        stage('Promote to Staging') {
+            when {
+                allOf {
+                    expression { params.DEPLOY_TO_DEV }
+                    anyOf {
+                        triggeredBy 'GitHubPushCause'
+                        expression { params.PROMOTE_TO_STAGING }
+                    }
+                }
+            }
+            steps {
+                withEnv(["RELEASE_TAG=${env.IMAGE_TAG}"]) {
+                    sh 'bash scripts/staging/promote.sh'
+                }
             }
         }
 
