@@ -12,7 +12,18 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 aws eks update-kubeconfig --name streamingapp-capstone-staging-eks --alias "$ctx" --kubeconfig "$tmp/config"
 k=(kubectl --kubeconfig "$tmp/config" --context "$ctx" -n "$ns")
-"${k[@]}" wait --for=condition=Ready externalsecret/streamingapp-application --timeout=60s
+# The bootstrap script checks ExternalSecret readiness. At deployment time check
+# the Kubernetes Secret consumed by the pods, without printing either value.
+ready=false
+for attempt in {1..12}; do
+  ready=$("${k[@]}" get secret streamingapp-application --ignore-not-found -o go-template='{{if and (index .data "MONGO_URI") (index .data "JWT_SECRET")}}true{{else}}false{{end}}')
+  [[ $ready == true ]] && break
+  sleep 5
+done
+if [[ $ready != true ]]; then
+  echo 'Staging application secret is missing or incomplete. Run scripts/staging/sync-application-secret.sh and retry.' >&2
+  exit 1
+fi
 "${k[@]}" get configmap streamingapp-promotion-values -o 'jsonpath={.data.values\.json}' > "$tmp/values.json"
 args=(--set-string "image.registry=$registry" --set-string "image.tag=$RELEASE_TAG" --set-string "frontend.tag=$RELEASE_TAG")
 for svc in admin auth chat frontend streaming; do
