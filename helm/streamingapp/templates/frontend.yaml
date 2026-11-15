@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: "{{ required "Set image.registry" .Values.image.registry }}/{{ .Values.frontend.repository }}:{{ required "Set frontend.tag" .Values.frontend.tag }}"
+          image: "{{ required "Set image.registry" .Values.image.registry }}/{{ .Values.frontend.repository }}:{{ required "Set frontend.tag" .Values.frontend.tag }}{{ with .Values.frontend.digest }}@{{ . }}{{ end }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.frontend.port }}

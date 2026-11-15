@@ -1,0 +1,16 @@
+pipeline {
+    agent any
+    options { disableConcurrentBuilds() }
+    parameters {
+        string(name: 'RELEASE_TAG', defaultValue: '', trim: true,
+               description: 'Image tag from a successful environment-neutral dev release.')
+    }
+    environment { AWS_REGION = 'ap-south-1' }
+    stages {
+        stage('Promote dev release to staging') {
+            steps {
+                sh 'bash scripts/staging/promote.sh'
+            }
+        }
+    }
+}

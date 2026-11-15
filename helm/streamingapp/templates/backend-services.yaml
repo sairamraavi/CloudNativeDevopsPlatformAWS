@@ -20,7 +20,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: {{ $name }}
-          image: "{{ required "Set image.registry" $.Values.image.registry }}/{{ $service.repository }}:{{ required "Set image.tag" $.Values.image.tag }}"
+          image: "{{ required "Set image.registry" $.Values.image.registry }}/{{ $service.repository }}:{{ required "Set image.tag" $.Values.image.tag }}{{ with $service.digest }}@{{ . }}{{ end }}"
           imagePullPolicy: {{ $.Values.image.pullPolicy }}
           ports:
             - name: http
