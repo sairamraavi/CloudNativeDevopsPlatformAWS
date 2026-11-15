@@ -27,7 +27,7 @@ ENV NODE_OPTIONS=--max_old_space_size=768
 RUN npm run build
 
 FROM nginx:stable-alpine AS production
-RUN apk del nginx-module-xslt && apk upgrade --no-cache zlib
+RUN apk del nginx-module-xslt && apk add --no-cache 'zlib>=1.4-r0'
 COPY --from=build /app/build /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

@@ -1,5 +1,5 @@
 FROM node:24-alpine AS base
-RUN apk upgrade --no-cache zlib
+RUN apk add --no-cache 'zlib>=1.4-r0'
 
 WORKDIR /app/streamingService
 
