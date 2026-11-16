@@ -4,7 +4,7 @@ pipeline {
     options {
         skipDefaultCheckout(true)
         disableConcurrentBuilds()
-        timeout(time: 55, unit: 'MINUTES')
+        timeout(time: 3, unit: 'HOURS')
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
 
@@ -258,8 +258,17 @@ pipeline {
                 '''
             }
         }
-        stage('Promote to Staging') {
+        stage('Approve staging') {
             when { expression { params.DEPLOY_TO_DEV } }
+            steps {
+                script {
+                    env.STAGING_DECISION = input message: "Promote verified release ${env.IMAGE_TAG} to staging?",
+                        parameters: [choice(name: 'Decision', choices: ['Skip', 'Promote'], description: 'Continue this build with the selected action.')]
+                }
+            }
+        }
+        stage('Promote to Staging') {
+            when { expression { env.STAGING_DECISION == 'Promote' } }
             steps {
                 withEnv(["RELEASE_TAG=${env.IMAGE_TAG}"]) {
                     sh 'bash scripts/staging/promote.sh'
@@ -267,5 +276,21 @@ pipeline {
             }
         }
 
+        stage('Production approval') {
+            when { expression { env.STAGING_DECISION == 'Promote' && env.PRODUCTION_PROMOTION_ENABLED == 'true' } }
+            steps {
+                script {
+                    if (!env.PRODUCTION_APPROVERS?.trim()) {
+                        error 'Configure PRODUCTION_APPROVERS before enabling production promotion.'
+                    }
+                    def decision = input message: "Release staging-verified ${env.IMAGE_TAG} to production?",
+                        submitter: env.PRODUCTION_APPROVERS,
+                        parameters: [choice(name: 'Decision', choices: ['Skip', 'Promote'], description: 'Upgrade the existing production release.')]
+                    if (decision == 'Promote') {
+                        sh 'bash scripts/prod/promote.sh'
+                    }
+                }
+            }
+        }
     }
 }
