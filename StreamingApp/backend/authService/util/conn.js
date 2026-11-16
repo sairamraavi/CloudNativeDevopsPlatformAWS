@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     const URL = process.env.MONGO_URI || 'mongodb://localhost:27017/streamingapp';
-    console.log('Connecting to MongoDB at:', URL);
+    console.log('Connecting to MongoDB');
     
     await mongoose.connect(URL, {
       useNewUrlParser: true,
@@ -12,7 +12,7 @@ const connectDB = async () => {
 
     console.log('MongoDB Connected Successfully');
   } catch (error) {
-    console.error('MongoDB Connection Error:', error);
+    console.error('MongoDB connection failed', { code: Number.isInteger(error?.code) ? error.code : 'unknown' });
     process.exit(1);
   }
 };
@@ -20,7 +20,7 @@ const connectDB = async () => {
 connectDB();
 
 const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'DB ERROR: '));
+db.on('error', () => console.error('MongoDB connection error'));
 db.once('open', () => console.log('DB connection established'));
 
 module.exports = { db, mongoose };
