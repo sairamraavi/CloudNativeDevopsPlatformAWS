@@ -210,16 +210,42 @@ Development EKS: Helm deployment → rollout checks → application health
 Staging: promote the same image digests → integration / acceptance checks
     │
     ▼
-Production: approval + rollback / restore validation (not yet verified)
+Production: authorized operator approves → Helm promotes staging-tested images → running image digests checked
 ```
 
 | Environment | Kubernetes namespace | Documented state |
 | --- | --- | --- |
 | Development | `streaming-app-dev` | **Validated historically:** application, CI/CD, telemetry, alerts and recovery checks |
-| Staging | `streaming-app-stg` | **Partially validated:** infrastructure, TLS, secret synchronization and an automated promotion attempt; backend readiness failed during the recorded attempt |
-| Production | `streaming-app-prod` | **Prepared/design documented:** automation and deployment procedures exist; live end-to-end deployment, approval, rollback and recovery acceptance remain to be demonstrated |
+| Staging | `streaming-app-stg` | Verified deployment and HTTPS playback with build #22; build #23 passed staging before production approval. |
+| Production | `streaming-app-prod` | Initial installation and playback verified with build #22. Build #23 completed the approval-gated production promotion. |
 
-The original branch model associates `feature/*` with development, `develop` with staging and `main` with approved production releases. The documented Jenkins job, however, deploys dev and optionally promotes to staging; the actual SCM branch and deployment switches must be checked in the configured Jenkins job. **Branch names alone do not automatically enforce an environment deployment.** See [release delivery and blockers](Docs/delivery.md).
+The original branch model associates `feature/*` with development, `develop` with staging and `main` with approved production releases. The documented Jenkins job, however, deploys dev and supports approved promotion through staging to production; the actual SCM branch and deployment switches must be checked in the configured Jenkins job. **Branch names alone do not automatically enforce an environment deployment.** See [release delivery and blockers](Docs/delivery.md).
+
+### Staging deployment verified
+
+After the earlier database login failure described above, Jenkins build **#22** promoted release `96a8a19cf9f4-22` to staging. All five services had a ready replica, and each ran the image digest selected for that release. The featured-video API returned HTTP 200. We also verified playback through `staging.sairamraavi.com` and confirmed admin access after signing in again.
+
+![Successful Jenkins promotion of the release to staging](Docs/evidence/staging-02-release-promotion.png)
+
+![Video playback on the staging HTTPS website](Docs/evidence/staging-03-https-playback.png)
+
+### Production installation and playback verified
+
+Two EKS workers were Ready across the Mumbai availability zones. The first production Helm installation ran all five image digests from staging build **#22**. After registering a production user and granting the application admin role, we tested upload and playback on the production hostname.
+
+![Production EKS workers ready in two availability zones](Docs/evidence/prod-01-eks-foundation.png)
+
+![Video playback through the production HTTPS hostname](Docs/evidence/prod-03-https-playback.png)
+
+#### Jenkins-approved production release
+
+Build **#22** established the production release from the workstation. In build **#23**, Jenkins paused after staging and asked whether to promote release `cc27dd7fa32b-23`. The first screenshot shows **Promote** selected before the operator clicked **Proceed**.
+
+![Build 23 awaiting operator approval to promote the staging-tested release to production](Docs/evidence/prod-04-jenkins-approved-popup-promotion.png)
+
+After approval, the same build upgraded the existing production release. Jenkins shows **Success** for the production stage and a green result for build **#23**.
+
+![Jenkins production approval stage succeeded and build 23 finished green](Docs/evidence/prod-04-jenkins-approved-promotion.png)
 
 ## Quick start and deployment
 
@@ -284,6 +310,12 @@ For application-level tests, open the configured HTTPS hostname and verify login
 
 ## Backup, recovery and cost management
 
+[Production rollback rehearsal](Docs/production-rollback.md) — check the running build, roll back five services and restore the original release.
+
+Helm rolled all five production services back from build **#23** to **#22**, then restored **#23**. After each change, the deployment checks matched all five image digests and the public catalogue returned JSON.
+
+![Production rollback to build 22 and recovery to build 23, with five ready deployments and a JSON catalogue response after each change](Docs/evidence/prod-05-rollback-and-recovery.png)
+
 **Before teardown:** Stop builds/uploads, protect private Jenkins and SonarQube archives, verify `SHA256SUMS`, preserve required S3 objects / image digests and record the existing Terraform state backend. Backup archives and state files can contain secrets: **never commit them**.
 
 ```bash
@@ -330,4 +362,4 @@ Screenshots represent separate sessions and sometimes different AWS accounts, ho
 
 ---
 
-**Capstone outcome:** A documented, demonstrated **development** cloud-native delivery platform, with a partially verified staging promotion workflow and an explicit roadmap for production acceptance. The goal of this repository is to make the actual engineering work, reproducible steps, proof and limitations reviewable—not to represent incomplete production exercises as finished.
+**Capstone outcome:** StreamingApp was deployed on EKS, tested in staging and promoted to production through an approved Jenkins release. The production release was rolled back and restored successfully. An isolated Atlas database restore remains pending.

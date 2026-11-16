@@ -4,7 +4,7 @@ const connectDB = async () => {
   try {
     const uri = process.env.MONGO_URI || 'mongodb://localhost:27017/streamingapp';
     if (!mongoose.connection.readyState) {
-      console.log('[streaming/db] Connecting to MongoDB at:', uri);
+      console.log('[streaming/db] Connecting to MongoDB');
       await mongoose.connect(uri, {
         useNewUrlParser: true,
         useUnifiedTopology: true,
@@ -12,7 +12,7 @@ const connectDB = async () => {
       console.log('[streaming/db] MongoDB connection established');
     }
   } catch (error) {
-    console.error('MongoDB connection error:', error);
+    console.error('MongoDB connection failed', { code: Number.isInteger(error?.code) ? error.code : 'unknown' });
     process.exit(1);
   }
 };

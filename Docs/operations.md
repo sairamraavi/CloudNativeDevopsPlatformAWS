@@ -43,4 +43,8 @@ For the exact setup commands, see [the monitoring chapter](04-monitoring.md) and
 | Jenkins forbidden on ExternalSecret | AWS authenticated the Jenkins role. Kubernetes denied get on the custom resource. | Bootstrap validates ExternalSecret as operator; promotion checks the application Secret. Build 17 passed this point. |
 | Staging backend CrashLoopBackOff | Inspect health and sanitized error classification. A literal at-sign in the credential broke SRV parsing. After encoding it, the driver reached Atlas and reported authentication failed. | Secret synchronized and pods restarted. The final login failure remains open; verify the user/password in the correct Atlas project and confirm all rollouts before claiming success. |
 
-**Security finding:** the four backend connection modules in this checkout log their complete MongoDB URI on startup. Limit access to existing logs, rotate affected credentials and remove URI logging before capturing or publishing logs. Screenshot review cannot establish what was previously exported to CloudWatch.
+**Database logs:** Earlier backend images printed the connection URI at startup. The updated connection handlers log connection status and numeric error codes. Restrict access to historical logs and rotate any credentials recorded there. Redeploy the updated images before collecting new evidence.
+
+## Production check after the logging fix
+
+Release `c5b83ef8c82e-24` ran in all five production deployments with one ready replica each. The inspected current logs from admin, auth, chat and streaming each contained a successful MongoDB connection message and no MongoDB URI pattern. This check covered up to the last 1,500 lines per sampled container; older log streams require separate handling. ECR returned COMPLETE with empty severity counts for the deployed Linux amd64 image of each service. Scan results apply to those digests at the time of the check.

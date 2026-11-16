@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ ! ${RELEASE_TAG:-} =~ ^[[:xdigit:]]{12}-[0-9]+$ ]]; then
-  echo 'Enter the verified dev image tag under Build with Parameters.' >&2
+  echo 'Expected RELEASE_TAG from the verified dev build (12-character commit followed by the build number).' >&2
   exit 1
 fi
 account=$(aws sts get-caller-identity --query Account --output text)
@@ -39,7 +39,15 @@ for svc in admin auth chat frontend streaming; do
   args+=(--set-string "$key=$digest")
   echo "$image@$digest" > "$tmp/$svc"
 done
-helm upgrade --install streamingapp helm/streamingapp --kubeconfig "$tmp/config" --kube-context "$ctx" -n "$ns" -f "$tmp/values.json" "${args[@]}" --wait --timeout 10m
+if helm upgrade --install streamingapp helm/streamingapp --kubeconfig "$tmp/config" --kube-context "$ctx" -n "$ns" -f "$tmp/values.json" "${args[@]}" --wait --timeout 10m; then
+  echo "Staging Helm release is ready; checking the five deployed images."
+else
+  status=$?
+  echo "Staging deployment failed. Current readiness in $ns:" >&2
+  "${k[@]}" get deployments,pods || true
+  echo "If backends are restarting, verify the staging Atlas login and synced secret before retrying." >&2
+  exit "$status"
+fi
 for svc in admin auth chat frontend streaming; do
   "${k[@]}" rollout status deployment/"$svc" --timeout=120s
   image=$("${k[@]}" get deployment "$svc" -o 'jsonpath={.spec.template.spec.containers[0].image}')
