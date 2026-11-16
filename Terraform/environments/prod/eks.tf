@@ -14,7 +14,7 @@ module "eks" {
   kubernetes_version  = "1.36"
   private_subnet_ids  = module.networking.private_subnet_ids
   admin_role_arn      = var.eks_admin_role_arn
-  public_access_cidrs = var.eks_public_access_cidrs
+  public_access_cidrs = distinct(concat(var.eks_public_access_cidrs, ["${data.aws_instance.jenkins.public_ip}/32"]))
 
   node_instance_types  = var.node_instance_types
   node_max_size_per_az = 2

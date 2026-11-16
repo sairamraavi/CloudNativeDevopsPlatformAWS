@@ -221,6 +221,24 @@ Production: approval + rollback / restore validation (not yet verified)
 
 The original branch model associates `feature/*` with development, `develop` with staging and `main` with approved production releases. The documented Jenkins job, however, deploys dev and optionally promotes to staging; the actual SCM branch and deployment switches must be checked in the configured Jenkins job. **Branch names alone do not automatically enforce an environment deployment.** See [release delivery and blockers](Docs/delivery.md).
 
+### Staging deployment verified
+
+After the earlier database login failure described above, Jenkins build **#22** promoted release `96a8a19cf9f4-22` to staging. All five services had a ready replica, and each ran the image digest selected for that release. The featured-video API returned HTTP 200. We also verified playback through `staging.sairamraavi.com` and confirmed admin access after signing in again.
+
+![Successful Jenkins promotion of the release to staging](Docs/evidence/staging-02-release-promotion.png)
+
+![Video playback on the staging HTTPS website](Docs/evidence/staging-03-https-playback.png)
+
+### Production installation and playback verified
+
+Two EKS workers were Ready across the Mumbai availability zones. The first production Helm installation ran all five image digests from staging build **#22**. After registering a production user and granting the application admin role, we tested upload and playback on the production hostname.
+
+![Production EKS workers ready in two availability zones](Docs/evidence/prod-01-eks-foundation.png)
+
+![Video playback through the production HTTPS hostname](Docs/evidence/prod-03-https-playback.png)
+
+The first install was run from the workstation. Jenkins approval for a subsequent production release is a separate milestone.
+
 ## Quick start and deployment
 
 > **Prerequisites:** AWS account and correctly authenticated profile, AWS CLI, Docker / Compose, Terraform, kubectl, Helm, Ansible, Python, domain/Cloudflare access, MongoDB Atlas access and required private secrets. Cloud provisioning creates chargeable resources. Read the full instructions before applying or deleting infrastructure.
