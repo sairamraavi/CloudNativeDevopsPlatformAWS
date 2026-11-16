@@ -63,6 +63,14 @@ def tf(*args):
 
 
 def outputs(where):
+    # The multi-environment entry point initializes each remote root separately.
+    platform_cache = os.environ.get("CAPSTONE_PLATFORM_CACHE")
+    if platform_cache:
+        keys = {"bootstrap": "bootstrap", "persistent": "persistent", "dev": "environments/dev"}
+        metadata = Path(platform_cache) / keys[Path(where).name] / "cache"
+        env = dict(os.environ, TF_DATA_DIR=str(metadata))
+        result = subprocess.check_output(["terraform", "-chdir=" + str(where), "output", "-json"], env=env)
+        return {k: v["value"] for k, v in json.loads(result).items()}
     return {
         k: v["value"]
         for k, v in json.loads(
@@ -103,6 +111,7 @@ def connect(o):
         o["eks_cluster_name"],
         "--alias",
         CTX,
+        *(["--role-arn", os.environ["CAPSTONE_EKS_ADMIN_ROLE_ARN"]] if os.environ.get("CAPSTONE_EKS_ADMIN_ROLE_ARN") else []),
     )
 
 

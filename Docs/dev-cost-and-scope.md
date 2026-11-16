@@ -1,8 +1,6 @@
-# Session boundaries, retained data and cost controls
+# What stays after you stop dev
 
-**Verified historically:** manual dev removal and recreation, empty dev Terraform state, CI/host archive integrity, restored Jenkins and SonarQube. **Implemented but not fully verified:** the combined automated checkpoint → down → up cycle. Atlas data backup and isolated database restore remain pending.
-
-Use [dev lifecycle automation](dev-lifecycle.md) first. It depends on the original account, region, private checkpoint directory, SSH identity, Terraform state and retained images, snapshots and external-service access. Starting an EC2 instance alone does not restore the cluster. Switching to a personal AWS account requires separate state, resource identifiers, images, DNS and service identities.
+Stopping Jenkins only stops one machine. The cluster, workers, NAT gateways and load balancer can still be running. Use the [dev shutdown procedure](dev-lifecycle.md), then check the AWS inventory below.
 
 | Owner | While running | After dev teardown or ordinary stop |
 | --- | --- | --- |
@@ -31,5 +29,3 @@ aws ec2 describe-snapshots --region "$AWS_REGION" --owner-ids self --query 'Snap
 ```bash
 aws ce get-cost-and-usage --region us-east-1 --time-period "Start=$START_DATE,End=$END_DATE" --granularity DAILY --metrics UnblendedCost --group-by Type=DIMENSION,Key=SERVICE
 ```
-
-**Manual approval required:** the down operation removes workloads and dev infrastructure. Confirm the environment, export necessary logs, check four archive checksums and snapshot completion, review the plan, then verify the dev state and residual billable inventory. Keep bootstrap, persistent and staging roots out of the dev destroy plan. Never use a broad bucket-empty, snapshot-delete or account-wide cleanup as a substitute for identifying ownership.

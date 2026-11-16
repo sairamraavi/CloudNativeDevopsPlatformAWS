@@ -1,45 +1,51 @@
-# How a commit becomes a running release
+# Follow one release from GitHub to staging
 
-**Dev delivery — implemented and verified. Staging delivery — partially implemented.** The same application pipeline builds five images once, verifies the release in dev, then uses their ECR digests in a separate staging cluster. A Git branch selects the Jenkinsfile revision; the deployment target is selected by pipeline configuration. A branch named staging does not provision a cluster.
+A release is a set of five images built from one Git commit. The Jenkins build number distinguishes two builds of the same commit. A tag helps you find an image; its digest identifies the exact image contents.
 
-## Operator prerequisites
+## 1. Prepare Jenkins once
 
-On the workstation complete [setup steps 8–14 and 19–24](setup-process.md): publish the initial images, install the dev Helm release, configure the EC2 controller, set up the SCM job and provision its kubeconfig. Jenkins requires the Docker socket, scoped instance profile, a working SonarQube project and the scanner tool. On EC2, nginx forwards the GitHub POST to Jenkins; Cloudflare Tunnel publishes that origin. Verify both GitHub delivery success and a build whose cause is a push. A manually successful job demonstrates only the downstream pipeline.
+Follow [chapter 5](05-jenkins-and-logs.md) to install Jenkins, connect SonarQube and create the `streamingapp-dev` job. Choose **Pipeline script from SCM**, select the branch you actually push to and enter `Jenkinsfile` as the script path. Jenkins needs an existing dev Helm release to upgrade. Create that first in [chapter 3](03-cluster-and-application.md).
 
-![Jenkins build triggered by a GitHub push](screenshots/eks/61-jenkins-github-triggered-build.png)
+## 2. Push a change and watch the build
 
-## Build and release specification
+Open the job and select the new build. Its cause should identify a GitHub push. In **Console Output**, follow the work in order:
 
-Every command and its environment are in the [root Jenkinsfile](../Jenkinsfile). The rows below follow execution order. Commands run on the Jenkins agent in its checked-out workspace. AWS credentials come from the instance profile. KUBECONFIG points to the Jenkins user's dev configuration. The job serializes builds, keeps ten and has a 55-minute timeout.
+1. Check out the commit and run the backend and frontend tests.
+2. Submit the code to SonarQube and read the quality gate result.
+3. Check the build tools, AWS role and permission to update dev.
+4. Build five Linux amd64 images. Push each image to ECR with the commit and build number in its tag.
+5. Update dev using Helm. Wait for each deployment, check its image and request the public website.
 
-| Stage | Operation and acceptance condition |
-| --- | --- |
-| Checkout | Check out SCM, then record the commit with `git log -1 --format="%h %s"`. |
-| Install Dependencies and Run Tests | Mount sources read-only in two temporary Node 24 containers. Copy lockfiles and sources under /work, run npm ci and execute admin middleware tests and frontend route tests (Jest runInBand, watch disabled). Historical results were six backend and seven frontend tests passing. |
-| SonarQube Analysis and Quality Gate | Run the configured capstone-sonar-scanner through the capstone-sonarqube server binding. The [scanner properties](../sonar-project.properties) specify source and test scopes and wait up to 300 seconds for the gate. Keep analysis tokens in Jenkins Secret Text credentials. |
-| Verify Build Tools | Check Git, Docker, Buildx, AWS CLI, Terraform, kubectl and Helm versions. This stage checks availability; infrastructure provisioning happens separately. |
-| Verify AWS Identity | Compare the STS account and region with the cluster ARN in the dev kubeconfig. |
-| Verify Deployment Access | List dev deployments and check permission to patch them in streaming-app-dev. Historical negative test: the controller could not delete cluster nodes. |
-| Prepare Image Version | Combine the 12-character Git commit with BUILD_NUMBER. Derive ECR_REGISTRY from STS and region, and APP_HOST from the dev Ingress. |
-| Build Docker Images | Build linux/amd64 with --pull. Auth uses its service directory; streaming, admin and chat use the backend context to include common code. React builds against same-origin API paths; Nginx serves the output. Run nginx -t inside the frontend image. |
-| Push Images to ECR | Authenticate using get-login-password piped to docker login --password-stdin and a temporary Docker config. Push all five immutable tags, then describe each image. |
-| Deploy to EKS | With DEPLOY_TO_DEV enabled, lint with current values, then run helm upgrade against the existing dev release with the new image tag, --reuse-values, --rollback-on-failure and --wait. |
-| Post-Deployment Verification | Wait for each rollout, compare the deployed image with the release tag, require HTTP 200 from the public dev root and list deployments, pods and HPAs. |
-| Promote to Staging | After verified dev deployment, pass IMAGE_TAG as RELEASE_TAG to the [promotion script](../scripts/staging/promote.sh). The active job automatically promotes; clearing DEPLOY_TO_DEV skips deployment stages. |
+![Jenkins completed the image build, push and dev rollout](screenshots/eks/57-jenkins-build-push-deploy-success.png)
 
-![Historical dev build, push, deploy and verification stages](screenshots/eks/57-jenkins-build-push-deploy-success.png)
+The stage names and defaults in your current build come from the [root Jenkinsfile](../Jenkinsfile). The screenshot records an earlier run.
 
-ECR scanning is a separate release inspection. With Buildx, a tag can identify an OCI index that also contains an attestation. Use the Linux amd64 child digest when querying scan findings, as shown in setup step 8. A past frontend scan had six critical findings; a later scan of a different image reported one. A successful push or SonarQube gate cannot establish a clean container scan.
+## 3. Prepare staging before the first promotion
 
-## Staging bootstrap and first rollout
+Staging has its own cluster, namespace, hostname, certificate, database credentials and media bucket. Create these with the [combined setup](setup-dev-stage-prod.md). If you already created the staging Terraform resources by hand, use the workstation scripts below from the repository root with that account's staging backend and private inputs configured. The preparation script reads the saved staging workloads plan, checks the allowed changes and applies them automatically. That historical script assumes the original staging hostname. For another domain, use the combined runner and its private configuration.
 
-The workstation must already have the staging-data and staging Terraform backends initialized, a separate Atlas database user and secret, an issued certificate, and the ALB controller. Use the personal account's streamingapp profile in Mumbai. These are **operator procedures**, not new executions:
+```bash
+bash scripts/staging/verify-foundation.sh
+bash scripts/staging/sync-application-secret.sh
+bash scripts/staging/prepare-promotion.sh
+```
 
-| Where and command (repository root) | Effect and expected result |
-| --- | --- |
-| Mac: `bash scripts/staging/verify-foundation.sh` | Refreshes local kubeconfig; reads EKS status, Ready nodes in two zones and six managed add-ons. |
-| Mac: `bash scripts/staging/sync-application-secret.sh` | Changes Helm releases on staging. Installs External Secrets and explicitly targets the staging remote secret. Waits for SecretStore and ExternalSecret Ready and prints key names only. |
-| Mac: `bash scripts/staging/prepare-promotion.sh` | Reuses saved foundation inputs, plans and applies scoped Jenkins access and prepares Helm values in a staging ConfigMap. Verify the target account and saved workloads plan before running. |
-| Jenkins: `bash scripts/staging/promote.sh` | Requires AWS_REGION and RELEASE_TAG. Creates a temporary kubeconfig, checks required secret keys, checks dev rollouts and tag matches, resolves ECR digests, and performs helm upgrade --install in streaming-app-stg. Then verifies all five image references. |
+Look for ready nodes in two zones, an issued certificate and Ready conditions for both secret resources. The preparation script gives Jenkins the deployment access and Helm settings it will use.
 
-Build 17 reached staging Helm install; four backends failed readiness. The [incident record](operations.md) explains why secret synchronization and a healthy frontend were insufficient to certify staging. The separate [staging job definition](../Jenkinsfile.staging) is in Git; build 17 ran the root job.
+![Staging cluster foundation](evidence/staging-01-eks-foundation.png)
+
+## 4. Check what was promoted
+
+Use the same Jenkins job. With **DEPLOY_TO_DEV** selected, the job deploys to dev and automatically enters **Promote to Staging** after dev passes. Clearing the box skips deployment. The [promotion script](../scripts/staging/promote.sh) resolves each ECR image to its digest, installs or upgrades the staging release, and checks all five deployments.
+
+Using your staging kubeconfig, run:
+
+```bash
+kubectl --context streamingapp-capstone-staging -n streaming-app-stg get deployments -o 'custom-columns=SERVICE:.metadata.name,READY:.status.readyReplicas,IMAGE:.spec.template.spec.containers[0].image'
+```
+
+Look for ready replicas in **every** row and the five expected image digests. Then use the staging website to log in, upload a test video, play it and chat from two browsers. During the recorded attempt the frontend started, but four backends failed to log in to Atlas. A synchronized Kubernetes secret only tells you that the secret was copied. Confirm the database user, password encoding, database permissions and current NAT access entries before rerunning.
+
+## 5. Decide when to release production
+
+Record the staging-tested digests, test results and deployed-image scan findings. Have the release owner review those results, confirm a rollback release and test a database restore before sending users to production. See the [production planning scripts](../scripts/prod/README.md) and [operator-run setup](setup-dev-stage-prod.md). The root Jenkins job ends at staging. A completed production approval, rollout and rollback still need a live demonstration.
