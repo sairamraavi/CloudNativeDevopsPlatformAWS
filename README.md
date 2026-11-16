@@ -1,88 +1,333 @@
-# StreamingApp | Production-oriented delivery platform on Amazon EKS
+# Cloud Native DevOps Platform on AWS | StreamingApp Capstone
 
-[GitHub repository](https://github.com/sairamraavi/CloudNativeDevopsPlatformAWS) · [Setup runbook](Docs/setup-process.md) · [Submission evidence and completion checklist](Docs/evidence-index.md)
+**End-to-end DevOps engineering capstone:** a five-service streaming platform containerized with Docker, deployed to private Amazon EKS worker nodes using Terraform and Helm, released through Jenkins CI/CD, and operated with monitoring, security controls and recovery procedures.
 
-StreamingApp is a five-service video platform with authenticated playback, administrative uploads and real-time chat. Its AWS architecture separates public traffic, private workloads, persistent data and the CI controller. The release workflow builds versioned artifacts once and promotes those artifacts across environment boundaries. This repository contains the platform implementation, the production rollout design, and the procedures for operating and retiring an environment.
+[![AWS](https://img.shields.io/badge/Cloud-AWS%20ap--south--1-orange)](https://aws.amazon.com/eks/) [![Kubernetes](https://img.shields.io/badge/Orchestration-Amazon%20EKS-blue)](https://aws.amazon.com/eks/) [![IaC](https://img.shields.io/badge/IaC-Terraform-purple)](Terraform/) [![CI/CD](https://img.shields.io/badge/CI%2FCD-Jenkins-red)](Jenkinsfile) [![Documentation](https://img.shields.io/badge/Documentation-Runbooks-green)](Docs/setup-process.md)
 
-## Objectives and implementation journey
+**Project:** StreamingApp · **Region:** `ap-south-1` (Mumbai) · **Repository:** [CloudNativeDevopsPlatformAWS](https://github.com/sairamraavi/CloudNativeDevopsPlatformAWS) · **Implementation branch:** [`feature/capstone-end-to-end`](https://github.com/sairamraavi/CloudNativeDevopsPlatformAWS/tree/feature/capstone-end-to-end) · **Submission branch:** [`develop`](https://github.com/sairamraavi/CloudNativeDevopsPlatformAWS/tree/develop)
 
-| Milestone | Engineering decision and result |
-| --- | --- |
-| Design and source control | The architecture diagram and connector register preceded provisioning. PRs 1–3 integrated architecture, scaffolding and the sprint3-ansible work. Later delivery work used feature/capstone-end-to-end. Git history records integration order; sprint estimates and individual assignments are unavailable. |
-| Local baseline | Compose brought up MongoDB, four APIs and the frontend. Tests covered nested-route refresh, service health, authentication and data persistence. Linux/amd64 builds matched the EKS worker architecture. |
-| Provision AWS | Terraform separated bootstrap state, persistent ECR/media/secret/certificate resources and replaceable dev infrastructure. The personal-account deployment used a new state bucket, regional resources and rebuilt images. |
-| Deploy and validate | Helm deployed five workloads behind HTTPS. Operators verified login, upload/playback, persistent chat and restricted admin APIs. Per-service CPU HPAs scaled application replicas. |
-| Automate and observe | Ansible prepared the EC2 controller. The GitHub webhook, Jenkins, SonarQube, Docker, ECR and Helm delivered dev releases. Operators verified Prometheus targets, Grafana dashboards, SES alerts, CloudWatch logs and S3 access logs. |
-| Recover and promote | Dev teardown and manual recovery were demonstrated. The pipeline subsequently gained automatic digest-pinned staging promotion. Staging build 17 reached Helm install and stopped on backend readiness. |
+> **Verification scope (16 November 2026):** Development deployment, functional application tests, Jenkins-driven releases, core monitoring and a development rebuild have historical evidence. Staging infrastructure and a promotion attempt were demonstrated, but staging acceptance remains blocked by backend database connectivity/readiness. A fully approved and verified production rollout, rollback and isolated database recovery drill are **not claimed**. Screenshot artifacts document multiple sessions and AWS accounts; they are not proof that the services are running now.
 
-## Architecture and application
+## Contents
 
-![AWS infrastructure, delivery path, workloads, telemetry and recovery design](Architecture/StreamingApp-Production-DevOps-Architecture.png)
+- [Overview and objectives](#overview-and-objectives)
+- [Architecture](#architecture)
+- [Application services and technical stack](#application-services-and-technical-stack)
+- [Implementation journey and evidence](#implementation-journey-and-evidence)
+- [CI/CD and environment strategy](#cicd-and-environment-strategy)
+- [Quick start and deployment](#quick-start-and-deployment)
+- [Validation and operational checks](#validation-and-operational-checks)
+- [Backup, recovery and cost management](#backup-recovery-and-cost-management)
+- [Completed work and remaining verification](#completed-work-and-remaining-verification)
+- [Documentation and repository map](#documentation-and-repository-map)
 
-The original diagram includes production design targets. In the implemented application path, Cloudflare DNS points to an internet-facing AWS ALB in Mumbai. ACM provides TLS. The Kubernetes controller configures the ALB, which sends requests to workloads on private EKS worker nodes across two zones. NAT provides outbound access to Atlas. Cloudflare Tunnel separately publishes the Jenkins and SonarQube origins on EC2. [Design register and editable diagram](Docs/architecture.md)
+## Overview and objectives
 
-| Workload | Stack / container port | Responsibility |
+This project takes a working video application from local development to a production-oriented AWS delivery platform. A viewer can register, sign in, browse and play uploaded videos, and exchange real-time chat messages. An administrator can upload media and manage content. The platform combines application delivery with infrastructure-as-code, least-privilege access, observability and environment lifecycle practices.
+
+**Engineering goals:**
+
+1. Package a React frontend and four Node.js APIs into reproducible containers.
+2. Provision AWS networking, identity, persistent resources and EKS using Terraform with protected remote state.
+3. Deploy the application through Helm behind an HTTPS Application Load Balancer; use MongoDB Atlas for records and S3 for media.
+4. Automate unit tests, code-quality checks, image builds, ECR publishing and dev rollouts using GitHub and Jenkins.
+5. Prove health, access controls, scaling, metrics, logs and alert delivery; document recovery and teardown.
+6. Introduce reproducible staging/production foundations and promote image digests without rebuilding artifacts, while accurately recording incomplete acceptance checks.
+
+## Architecture
+
+![StreamingApp AWS platform architecture — delivery, network, EKS, security, telemetry and recovery](Architecture/StreamingApp-Production-DevOps-Architecture.png)
+
+[View full-size architecture](Architecture/StreamingApp-Production-DevOps-Architecture.png) · [Editable draw.io diagram](Architecture/StreamingApp-Production-DevOps-Architecture.drawio) · [Detailed architecture and connector register](Docs/architecture.md)
+
+**Request path:** Cloudflare DNS → internet-facing AWS Application Load Balancer with ACM TLS → Kubernetes Ingress → frontend and four backend workloads on private EKS workers in two Availability Zones. The AWS Load Balancer Controller manages the ALB configuration. Backend pods access MongoDB Atlas through NAT gateways; S3 stores video media. AWS Secrets Manager and External Secrets supply application secrets. IAM roles control workload access to AWS services.
+
+**Delivery path:** Developer Git push → GitHub webhook → Jenkins on EC2 (exposed separately via Cloudflare Tunnel) → tests / SonarQube quality gate → five `linux/amd64` Docker builds → Amazon ECR → Helm on EKS → rollout and HTTP verification. A subsequent staging promotion resolves deployed image digests to identify exactly what is promoted.
+
+**Operations path:** Metrics Server → HPAs for pod scaling; Cluster Autoscaler for node capacity; Prometheus → Grafana / Alertmanager → Amazon SES email; Fluent Bit and CloudWatch Agent → CloudWatch Logs; ALB access logs → S3. The drawing also contains production **design targets**, which should not be mistaken for completed deployments.
+
+## Application services and technical stack
+
+| Service | Technology / container port | Main responsibility |
 | --- | --- | --- |
-| Frontend | React built with Node, served by Nginx / 80 | Login, catalogue, player and administration UI |
-| Auth | Node.js / 3001 | Registration, login and JWT issuance |
-| Streaming | Node.js / 3002 | Catalogue, featured videos and media access |
-| Admin | Node.js / 3003 | Privileged metadata changes and S3 media uploads |
-| Chat | Node.js and Socket.IO / 3004 | Live conversation and persisted chat history |
+| Frontend | React built with Node.js, served by Nginx / `80` | Login, catalogue, video player and administrative UI |
+| Auth | Node.js / `3001` | Registration, authentication and JWT issuance |
+| Streaming | Node.js / `3002` | Video catalogue, featured videos and playback information |
+| Admin | Node.js / `3003` | Restricted metadata management and S3 uploads |
+| Chat | Node.js, Socket.IO / `3004` | Live messaging and persistent chat history |
 
-![Application playback in the browser with the video playing and the chat panel open](Docs/screenshots/eks/21-video-playback-success.png)
-
-## Delivery, security and operational acceptance
-
-The Jenkins job reads the root Jenkinsfile from SCM. It builds a commit-plus-build-number tag, obtains its AWS identity from the instance profile, checks namespace permissions and verifies all five running image references. Dev verification precedes staging promotion. A successful GitHub webhook delivery, a successful dev rollout and a healthy staging application are three separately verifiable results. [Stage-by-stage delivery guide](Docs/delivery.md)
-
-The application receives its JWT signing secret and Atlas URI through External Secrets. Workload roles scope media access, ECR retains release artifacts, and operator access uses account-specific state and EKS identities. Known security follow-ups include removing full URI startup logging and rescanning the actual deployed image digests. [Terraform and IAM](Terraform/README.md) · [Operational verification](Docs/operations.md)
-
-Three encrypted monitoring volumes support Prometheus, Grafana and Alertmanager. Operators correlated a unique HTTP request with its CloudWatch event and checked ALB log objects separately in S3. A synthetic alert demonstrated email delivery and recovery. A recurring lesson was to test the last hop: a Ready secret can still contain an invalid database credential, and an active logging agent does not establish log delivery.
-
-## Release progression and production acceptance
-
-| Environment | Release policy and current milestone |
+| Layer | Implemented or documented technologies |
 | --- | --- |
-| Development | GitHub triggers tests, SonarQube analysis, image publication and deployment. Jenkins verifies five workload image references and the public HTTP response. |
-| Staging | The same pipeline promotes the verified release by digest to a separate EKS cluster. The foundation and certificate are provisioned. Application acceptance is open after the last recorded Atlas authentication failure. |
-| Production | Plan-only infrastructure configuration is available; production deployment is pending. Promote the staging-approved digests after explicit approval, using production-scoped deployment access, database credentials, media storage, certificate and DNS. Production rollout and rollback validation are upcoming milestones. |
+| Source and CI/CD | Git, GitHub, GitHub webhooks, Jenkins, SonarQube |
+| Containers and deployment | Docker, Docker Compose, Amazon ECR, Helm, Kubernetes, Amazon EKS |
+| Infrastructure and configuration | Terraform, S3 state backend with locking, Ansible, Amazon VPC, EC2, IAM |
+| Routing and security | AWS ALB, AWS Load Balancer Controller, ACM, Cloudflare DNS/Tunnel, Secrets Manager, External Secrets, Kubernetes RBAC, workload IAM roles |
+| Application data | MongoDB Atlas, Amazon S3 media storage |
+| Visibility and scaling | Metrics Server, HPA, Cluster Autoscaler, Prometheus, Grafana, Alertmanager, SES, CloudWatch, Fluent Bit |
+| Continuity | Versioned infrastructure resources, backup scripts, snapshots, verified dev recovery steps, controlled teardown |
 
-**Production release criteria.** Record the commit, five image digests, scan findings and quality gate. Exercise login, upload, playback and two-client chat against staging data. Validate rollback to a known release, restore the database into an isolated target, and confirm alert delivery and log access. Before enabling production traffic, review replica placement and capacity for a zone loss, remove credential-bearing startup logging, and assign operators for approval, rollback and incident response. The two-zone network supports this design; application availability also depends on replicas, data connectivity and a tested recovery procedure.
+## Implementation journey and evidence
 
-## Repository map for reviewers
+Screenshots are embedded with standard GitHub Markdown so they render directly in the README when the referenced paths exist in the repository. See the [illustrated submission walkthrough](Docs/submission-walkthrough.md) for additional commands and evidence.
 
-| Start here | What to inspect |
-| --- | --- |
-| [Terraform roots and modules](Terraform/) | [Bootstrap state](Terraform/bootstrap/), [retained data and registries](Terraform/persistent/), [dev](Terraform/environments/dev/), [staging](Terraform/environments/staging/), [staging data](Terraform/staging-data/) and the [production cluster configuration](Terraform/environments/prod/) and [production data configuration](Terraform/prod-data/). |
-| [Jenkinsfile](Jenkinsfile) | SCM trigger, tests, scanner, platform checks, image tagging, ECR publish, Helm deploy and promotion. The [promotion script](scripts/staging/promote.sh) checks the five digests. |
-| [Ansible controller playbook](Ansible/playbooks/jenkins.yml) | Host provisioning order and [roles](Ansible/roles/) for Java, Docker, Jenkins, AWS tooling, nginx, log collection and the tunnel. |
-| [Application source](StreamingApp/) | [Frontend](StreamingApp/frontend/), [backend services and common code](StreamingApp/backend/) and [local Compose stack](StreamingApp/docker-compose.yml). |
-| [Application chart](helm/streamingapp/) | [Values](helm/streamingapp/values.yaml) and [templates](helm/streamingapp/templates/) for service accounts, workloads, routing and autoscaling. The [secret chart](helm/application-secrets/) connects workloads to Secrets Manager. |
-| [Observability](Monitoring/) | [Prometheus stack values](Monitoring/kube-prometheus-stack-values.yaml), [Grafana dashboards](Monitoring/dashboards/), [email routing](Monitoring/alertmanager-email.yaml) and [CloudWatch collectors](Monitoring/cloudwatch/). |
-| [Operational scripts](scripts/) | [Dev lifecycle runner](scripts/dev-session.py), [host recovery](scripts/recover-dev-tools.sh), [staging prerequisites](scripts/staging/) and [validation fixtures](tests/). |
+### 1. Application development and local Docker validation
 
-## Production configuration preview
+Docker Compose runs MongoDB, the frontend and four APIs. Local acceptance covered login, nested-route refresh, service health and application persistence. Docker images were built for the target EKS worker architecture (`linux/amd64`).
 
-The [production planning guide](scripts/prod/README.md) describes two isolated Terraform roots. The provisional baseline starts with two workers across two zones and per-zone NAT. Run the [plan-only script](scripts/prod/plan.sh) with `data` or `cluster` when the production inputs are available. These estimates require workload validation before rollout.
+![Docker Compose services running locally](Docs/screenshots/local-validation/01-containers-running.png)
 
-## When an environment is no longer needed
+![Successful application login in local environment](Docs/screenshots/local-validation/02-login-success.png)
 
-**Generate a preview before scheduling retirement.** From the repository root, with the environment's original inputs and backend selected, run `bash Terraform/teardown/plan.sh dev` or `bash Terraform/teardown/plan.sh staging`. The script saves a private destroy plan for review. See the [Terraform teardown plan and checklist](Terraform/teardown/README.md) for the optional tfvars argument, backup sequence, controller cleanup and post-teardown checks.
+**Reproduce:** [Local environment, AWS profile and container validation](Docs/01-local-and-account.md) · [Application code](StreamingApp/) · [Docker Compose](StreamingApp/docker-compose.yml)
 
-For recurring dev sessions, use the [checkpoint-aware lifecycle workflow](Docs/dev-lifecycle.md). Stopping Jenkins alone leaves EKS, NAT gateways and load balancers running. Preserve state, release images, media and required snapshots, and account for the shared Jenkins dependency before retiring dev while staging is in use. [Retained resources and cost checks](Docs/dev-cost-and-scope.md)
+#### Building and testing the application
 
-## Documentation index
+Node.js builds the React frontend, and Nginx serves the finished site. Docker packages each backend API separately so Jenkins can tag and publish all five images from the same commit. Before release, the frontend tests check who can open a protected page, and the backend tests check who can perform an admin action.
 
-| Guide | Contents |
-| --- | --- |
-| [Architecture](Docs/architecture.md) | Design history, components, network/control relationships |
-| [Setup and command reference](Docs/setup-process.md) | Prerequisites and 29 ordered steps from workstation setup to dev recovery |
-| [Terraform](Terraform/README.md) | Account isolation, root ownership, VPC, IAM and state |
-| [Ansible](Ansible/README.md) | Inventory, Ubuntu host, roles and Jenkins service validation |
-| [Application](StreamingApp/README.md) | Local stack, service settings, dependencies and smoke checks |
-| [Delivery](Docs/delivery.md) | Docker/ECR, Jenkins stages, testing, SonarQube, webhook and staging |
-| [Operations](Docs/operations.md) | EKS, Atlas, telemetry, acceptance and incident lessons |
-| [Dev lifecycle](Docs/dev-lifecycle.md) | Checkpoint, shutdown, restore, backup contents and limitations |
-| [Cost and scope](Docs/dev-cost-and-scope.md) | Destruction boundaries, retained resources and billing checks |
-| [Evidence and submission status](Docs/evidence-index.md) | Historical screenshots, missing proof and next acceptance criteria |
-| [Documentation validation](Docs/documentation-validation.md) | Scope, checks, security findings and evidence limitations |
+![Frontend container built with Node.js 24](Docs/screenshots/local-validation/23-frontend-node24-build.png)
+
+![Backend tests checking admin authorization](Docs/screenshots/eks/48-admin-authorization-tests-passed.png)
+
+**Reproduce:** [Run the application locally](StreamingApp/README.md) · [Run the frontend tests](StreamingApp/frontend/README.md) · [Test and build stages](Jenkinsfile)
+
+### 2. AWS foundation: Terraform remote state, persistent storage and images
+
+The Terraform structure separates **bootstrap**, **persistent services** and **replaceable development infrastructure**, preventing routine dev teardown from accidentally removing registry images, media and state. AWS resources were recreated in a personal account after earlier development in a lab account.
+
+![Terraform remote state verified](Docs/screenshots/local-validation/12-remote-state-verified.png)
+
+![AWS VPC subnet and route overview](Docs/screenshots/local-validation/15-vpc-resource-map.png)
+
+![Application images published to ECR](Docs/screenshots/local-validation/27-ecr-published-images.png)
+
+**Reproduce:** [Remote state, Terraform, Atlas and ECR](Docs/02-terraform-and-images.md) · [Terraform roots](Terraform/README.md)
+
+### 3. Amazon EKS application deployment and functional acceptance
+
+Terraform provisioned VPC networking, private EKS workers across two zones and a Jenkins host. External Secrets synchronized the app secrets. Helm installed five services behind HTTPS. Functional checks covered registration/login, admin uploads, playback, two-user live chat, persisted chat history and rejected unauthorized admin requests.
+
+![Admin video upload succeeded on the deployed application](Docs/screenshots/eks/20-admin-video-upload-success.png)
+
+![Video playback succeeded](Docs/screenshots/eks/21-video-playback-success.png)
+
+![Live chat between two users](Docs/screenshots/eks/22-live-chat-two-users.png)
+
+**Reproduce:** [EKS, networking, IAM, secrets, Helm and DNS](Docs/03-cluster-and-application.md) · [Helm chart](helm/streamingapp/) · [Application verification](Docs/operations.md)
+
+#### Cloudflare DNS and the application hostname
+
+We added two DNS records at different points in the setup. First, we copied the validation CNAME from AWS Certificate Manager into Cloudflare so AWS could issue the HTTPS certificate. Later, when Kubernetes created the load balancer, we pointed the application hostname to its DNS name. After a rebuild, check the application record against the new load balancer and keep the certificate validation record for renewal.
+
+![Cloudflare CNAME used to validate the ACM certificate](Docs/screenshots/security/03-cloudflare-acm-validation-cname.png)
+
+![Cloudflare application CNAME pointing to the load balancer](Docs/screenshots/security/05-cloudflare-application-cname.png)
+
+**Reproduce:** [Validate the certificate in step 6](Docs/02-terraform-and-images.md) · [Connect the website in step 14](Docs/03-cluster-and-application.md)
+
+### 4. CI/CD automation and secure releases
+
+Ansible provisioned the Jenkins EC2 tooling. A GitHub push triggered Jenkins; the pipeline ran application tests and SonarQube checks, published images to ECR, deployed to dev through Helm and checked the running release. Its specific stages and switches are defined by the version-controlled [`Jenkinsfile`](Jenkinsfile), rather than a fixed stage count in this README.
+
+![GitHub webhook delivered successfully](Docs/screenshots/eks/60-github-webhook-delivery-success.png)
+
+![Jenkins pipeline built, published and deployed application images](Docs/screenshots/eks/57-jenkins-build-push-deploy-success.png)
+
+![Deployment image verification after Jenkins release](Docs/screenshots/eks/58-jenkins-deployed-image-verification.png)
+
+**Reproduce:** [Jenkins, Ansible, webhook, quality gate and logging](Docs/05-jenkins-and-logs.md) · [Release trace](Docs/delivery.md) · [Ansible](Ansible/)
+
+#### SonarQube code checks in Jenkins
+
+We started SonarQube and its PostgreSQL database on the Jenkins host using Docker Compose. In SonarQube we created the project, then saved its analysis token as a Jenkins credential. During a build, the scanner submits the source code and Jenkins waits for the **quality gate**, SonarQube’s pass/fail result, before building the release images.
+
+![StreamingApp project created in SonarQube](Docs/screenshots/eks/53-sonarqube-project-created.png)
+
+![Jenkins received the SonarQube quality gate result](Docs/screenshots/eks/56-jenkins-sonarqube-quality-gate.png)
+
+**Reproduce:** [Connect Jenkins and SonarQube in step 21](Docs/05-jenkins-and-logs.md) · [SonarQube Compose file](Monitoring/sonarqube/compose.yaml) · [Scanner settings](sonar-project.properties)
+
+#### Cloudflare Tunnel for Jenkins and SonarQube
+
+The tunnel connects the tools on EC2 to their public hostnames. On the host, Nginx forwards the Jenkins hostname to Jenkins and the SonarQube hostname to SonarQube. GitHub sends a push event to the Jenkins hostname at `/github-webhook/`. We checked both ends: the connector was running, and Jenkins recorded a build started by the push.
+
+![Cloudflare Tunnel ready on the Jenkins host](Docs/screenshots/eks/59-jenkins-webhook-tunnel-ready.png)
+
+![Jenkins build started by a GitHub push](Docs/screenshots/eks/61-jenkins-github-triggered-build.png)
+
+**Reproduce:** [Configure the tunnel and webhook in step 23](Docs/05-jenkins-and-logs.md)
+
+### 5. Scaling, monitoring, logs and alerts
+
+Per-service HPAs support CPU-based scaling. Prometheus scrapes cluster/application metrics; Grafana dashboards expose resource and Jenkins activity. A controlled test alert reached email and generated a resolved notification. CloudWatch ingested application and Jenkins logs; ALB request logs were observed in S3.
+
+![Frontend HPA scale-up evidence](Docs/screenshots/eks/26-frontend-hpa-scale-up.png)
+
+![Grafana application resource dashboard](Docs/screenshots/eks/32-grafana-application-resource-dashboard.png)
+
+![Resolved alert notification](Docs/screenshots/eks/38-outlook-alert-resolved.png)
+
+**Reproduce:** [Autoscaling, monitoring, dashboards and alerts](Docs/04-monitoring.md) · [Operational validation and troubleshooting](Docs/operations.md)
+
+#### Prometheus target checks and email delivery
+
+After installing the monitoring stack with Helm, we opened **Status → Target health** in Prometheus to see which endpoints it could read. For Jenkins, we ran `up{job="jenkins"}`: a value of `1` means the latest scrape succeeded. Grafana uses those measurements for its Jenkins dashboard.
+
+![Prometheus target health showing successful scrapes](Docs/screenshots/eks/34b-prometheus-target-health.png)
+
+![Prometheus collecting metrics from Jenkins](Docs/screenshots/eks/64-prometheus-jenkins-target-up.png)
+
+To check email delivery, we made the test rule fire, opened Alertmanager and checked that it selected the Outlook receiver. The resolved email shown above arrived after we returned the rule to its inactive setting.
+
+![Alertmanager routed the firing test alert to the email receiver](Docs/screenshots/eks/36-alertmanager-test-alert.png)
+
+**Reproduce:** [Install monitoring and test the alert](Docs/04-monitoring.md) · [Connect Jenkins metrics in step 24](Docs/05-jenkins-and-logs.md) · [Grafana dashboard definition](Monitoring/dashboards/jenkins-monitoring.json)
+
+### 6. Teardown, backup and recovery
+
+The dev lifecycle documents a private checkpoint of Jenkins, SonarQube and monitoring data, controlled removal of billable dev resources and recreation of the deployment. Historical evidence includes successful playback after rebuilding dev and restoration of Jenkins job history. This **does not** establish that an isolated MongoDB Atlas restore or a fully unattended end-to-end recovery test has passed.
+
+![Playback succeeded after the development infrastructure was recreated](Docs/screenshots/eks/73-public-playback-after-recreation.png)
+
+![Jenkins job restored after development rebuild](Docs/screenshots/eks/74-jenkins-job-restored.png)
+
+**Reproduce:** [Backup and rebuild](Docs/06-backup-and-rebuild.md) · [Dev session lifecycle](Docs/dev-lifecycle.md) · [Full teardown](Docs/teardown-end-to-end.md)
+
+## CI/CD and environment strategy
+
+```text
+GitHub push
+    │
+    ▼
+Jenkins: checkout → tests → SonarQube quality gate → container builds
+    │
+    ▼
+Amazon ECR: immutable image digests / traceable build tags
+    │
+    ▼
+Development EKS: Helm deployment → rollout checks → application health
+    │
+    ▼
+Staging: promote the same image digests → integration / acceptance checks
+    │
+    ▼
+Production: approval + rollback / restore validation (not yet verified)
+```
+
+| Environment | Kubernetes namespace | Documented state |
+| --- | --- | --- |
+| Development | `streaming-app-dev` | **Validated historically:** application, CI/CD, telemetry, alerts and recovery checks |
+| Staging | `streaming-app-stg` | **Partially validated:** infrastructure, TLS, secret synchronization and an automated promotion attempt; backend readiness failed during the recorded attempt |
+| Production | `streaming-app-prod` | **Prepared/design documented:** automation and deployment procedures exist; live end-to-end deployment, approval, rollback and recovery acceptance remain to be demonstrated |
+
+The original branch model associates `feature/*` with development, `develop` with staging and `main` with approved production releases. The documented Jenkins job, however, deploys dev and optionally promotes to staging; the actual SCM branch and deployment switches must be checked in the configured Jenkins job. **Branch names alone do not automatically enforce an environment deployment.** See [release delivery and blockers](Docs/delivery.md).
+
+## Quick start and deployment
+
+> **Prerequisites:** AWS account and correctly authenticated profile, AWS CLI, Docker / Compose, Terraform, kubectl, Helm, Ansible, Python, domain/Cloudflare access, MongoDB Atlas access and required private secrets. Cloud provisioning creates chargeable resources. Read the full instructions before applying or deleting infrastructure.
+
+### A. Run the application locally
+
+```bash
+git clone https://github.com/sairamraavi/CloudNativeDevopsPlatformAWS.git
+cd CloudNativeDevopsPlatformAWS
+# Use the branch that contains the complete implementation and documentation.
+git switch feature/capstone-end-to-end
+
+test -f StreamingApp/.env || cp StreamingApp/.env.example StreamingApp/.env
+# Set a private JWT_SECRET in StreamingApp/.env; do not commit it.
+docker compose -f StreamingApp/docker-compose.yml config --quiet
+docker compose -f StreamingApp/docker-compose.yml up -d --build
+docker compose -f StreamingApp/docker-compose.yml ps
+```
+
+Open `http://localhost:3000` and test the login flow. Follow [Chapter 1](Docs/01-local-and-account.md) for service-by-service checks and AWS profile setup.
+
+### B. Provision the cloud foundation safely
+
+```bash
+export AWS_PROFILE=streamingapp
+export AWS_REGION=ap-south-1
+export AWS_DEFAULT_REGION="$AWS_REGION"
+export AWS_PAGER=''
+
+# Authenticate with the method configured for this profile (AWS login or SSO).
+aws sts get-caller-identity --profile "$AWS_PROFILE"
+```
+
+After verifying the **intended AWS account**, follow the [six-chapter setup guide](Docs/setup-process.md) in order. Do not copy a state backend, IAM ARN, cluster name, DNS target or NAT access-list entry from an older account/session. Chapter 2 explains first-time state creation versus reconnecting to an existing backend, and Chapter 3 covers EKS deployment and required Atlas access-list updates.
+
+### C. Recreate dev, staging and production from a prepared private backup
+
+The combined workflow is **not a zero-input, proven unattended deployment**. It needs a valid private configuration and existing Jenkins backup. Read [the full prerequisites and environment runner instructions](Docs/setup-dev-stage-prod.md) before executing:
+
+```bash
+python3 scripts/platform.py outline
+python3 scripts/platform.py plan "$HOME/.capstone-inputs/platform.json"
+# Only after reviewing the plan and confirming the cost / target account:
+python3 scripts/platform.py up "$HOME/.capstone-inputs/platform.json"
+```
+
+**Important:** The `up` command can provision resources for **three EKS environments** and incur significant AWS and Atlas costs. Its full multi-environment live validation is still outstanding.
+
+## Validation and operational checks
+
+With `kubectl` configured for the appropriate **dev** cluster and the deployment still running:
+
+```bash
+kubectl --context streamingapp-capstone-dev -n streaming-app-dev get deployments,svc,ingress,hpa
+kubectl --context streamingapp-capstone-dev -n streaming-app-dev rollout status deployment/frontend
+kubectl --context streamingapp-capstone-dev get nodes -L topology.kubernetes.io/zone
+kubectl --context streamingapp-capstone-dev top nodes
+```
+
+For application-level tests, open the configured HTTPS hostname and verify login, catalogue, admin upload, playback, chat in two browsers and denial of admin access without privilege. Verify release image tags/digests against the Jenkins build; check Prometheus targets and Grafana dashboards before claiming monitoring success. Full evidence, log tracing and troubleshooting: [Operations](Docs/operations.md) · [Evidence index](Docs/evidence-index.md).
+
+## Backup, recovery and cost management
+
+**Before teardown:** Stop builds/uploads, protect private Jenkins and SonarQube archives, verify `SHA256SUMS`, preserve required S3 objects / image digests and record the existing Terraform state backend. Backup archives and state files can contain secrets: **never commit them**.
+
+```bash
+# Development only: inspect/check the previously configured environment.
+python3 scripts/dev-session.py configure
+python3 scripts/dev-session.py check
+
+# Preview an all-environment teardown; do not execute destructive actions casually.
+python3 scripts/platform.py teardown-plan "$HOME/.capstone-inputs/platform.json"
+```
+
+Do **not** execute `down`, `terraform destroy` or the full platform retirement command until backups and the expected deletion scope have been reviewed. Development shutdown may leave persistent ECR, S3, remote state, Atlas and separate staging resources accruing charges. The full process and confirmation requirements are in [Dev lifecycle](Docs/dev-lifecycle.md), [End-to-end teardown](Docs/teardown-end-to-end.md) and [Costs and retained resources](Docs/dev-cost-and-scope.md).
+
+
+## Documentation and repository map
+
+The README provides the executive overview and evidence highlights; the linked guides preserve **step-by-step commands**, decisions and recovery procedures without making the main submission unreadably long.
+
+| Read in order | Detailed guide | What it covers |
+| --- | --- | --- |
+| 1 | [Setup overview](Docs/setup-process.md) | Six-chapter end-to-end implementation route |
+| 2 | [Local and account](Docs/01-local-and-account.md) | Tool versions, local Docker, AWS identity |
+| 3 | [Terraform and images](Docs/02-terraform-and-images.md) | Bootstrap state, persistent resources, ECR, Atlas |
+| 4 | [EKS and application](Docs/03-cluster-and-application.md) | Private networking, IAM, secrets, Helm, HTTPS |
+| 5 | [Monitoring](Docs/04-monitoring.md) | HPA, Cluster Autoscaler, Prometheus/Grafana, SES |
+| 6 | [Jenkins and logs](Docs/05-jenkins-and-logs.md) | Ansible, CI/CD, SonarQube, webhook, CloudWatch |
+| 7 | [Backup and rebuild](Docs/06-backup-and-rebuild.md) | Checkpoints, teardown and recovery proof |
+| — | [Illustrated walkthrough](Docs/submission-walkthrough.md) | Long-form, screenshot-led submission story and commands |
+| — | [Architecture](Docs/architecture.md) | Data path, diagram and editable source |
+| — | [Delivery](Docs/delivery.md) | Release trace, staging promotion and production prerequisites |
+| — | [Operations](Docs/operations.md) | Runbook, checks, observed faults and mitigations |
+| — | [Evidence index](Docs/evidence-index.md) | Selected evidence with embedded screenshots |
+| — | [Documentation review](Docs/documentation-validation.md) | Checks completed, review scope and precautions before sharing |
+| — | [Dev lifecycle](Docs/dev-lifecycle.md) | Checkpoint, dev down/up, recovery verification |
+| — | [Cost and resource scope](Docs/dev-cost-and-scope.md) | Billable resources retained after dev teardown |
+| — | [Multi-environment setup](Docs/setup-dev-stage-prod.md) | Prepared private-input automation across environments |
+| — | [Full teardown](Docs/teardown-end-to-end.md) | Ordered retirement of production, staging, dev |
+
+**Key repository paths:** [`StreamingApp/`](StreamingApp/) application and Compose · [`Terraform/`](Terraform/) infrastructure · [`Ansible/`](Ansible/) host configuration · [`helm/streamingapp/`](helm/streamingapp/) Kubernetes chart · [`Monitoring/`](Monitoring/) monitoring · [`scripts/`](scripts/) lifecycle and promotion tools · [`Jenkinsfile`](Jenkinsfile) delivery pipeline · [`Architecture/`](Architecture/) diagrams · [`Docs/screenshots/`](Docs/screenshots/) and [`Docs/evidence/`](Docs/evidence/) submission evidence.
+
+### Evidence and privacy notes
+
+Screenshots represent separate sessions and sometimes different AWS accounts, hosts and build numbers. Use each image as historical evidence of the stated test only. The files referenced above must exist in the repository at the indicated **case-sensitive relative paths** for GitHub to display them. Before publishing, inspect screenshots and Markdown for access tokens, passwords, account-specific identifiers, private database URLs, email contents and browser details; redact where appropriate. Do not commit `.env`, credentials, `*.tfstate`, backup archives, private Terraform plans or secret-bearing logs.
+
+---
+
+**Capstone outcome:** A documented, demonstrated **development** cloud-native delivery platform, with a partially verified staging promotion workflow and an explicit roadmap for production acceptance. The goal of this repository is to make the actual engineering work, reproducible steps, proof and limitations reviewable—not to represent incomplete production exercises as finished.

@@ -1,12 +1,12 @@
-# Operating and verifying the deployed platform
+# Check the running app
 
-## Application and data path — implemented and verified in dev
+## 1. Try the same request as a viewer
 
-The [application chart](../helm/streamingapp/) installs five Deployments, ClusterIP Services, service accounts and HTTP readiness/liveness probes. Kubernetes Ingress maps /api/admin, /api/chat, /socket.io, /api/streaming, /api and / to their respective Services. ALB targets pod IPs; ACM terminates HTTPS. Nodes reach Atlas through NAT. S3 stores the media while Atlas stores user, catalogue and chat records. The chart's in-cluster MongoDB is disabled for the cloud deployment.
-
-On the **Mac, repository root**, set CAPSTONE_CTX, CAPSTONE_NS and APP_DOMAIN for the same environment. **Read-only** acceptance checks. Expect five available deployments, the current Ingress and an HTTP 200 JSON response:
+On your Mac, choose the dev cluster and namespace. Set APP_DOMAIN to the hostname you deployed in chapter 3. First check the five deployments, then request the catalogue. Expect HTTP 200 and JSON from the API.
 
 ```bash
+export CAPSTONE_CTX=streamingapp-capstone-dev
+export CAPSTONE_NS=streaming-app-dev
 kubectl --context "$CAPSTONE_CTX" -n "$CAPSTONE_NS" get deployments,svc,ingress,hpa
 kubectl --context "$CAPSTONE_CTX" -n "$CAPSTONE_NS" rollout status deployment/frontend
 curl -fsS -o /dev/null -w '%{http_code} %{content_type}\n' "https://$APP_DOMAIN/api/streaming/videos/featured"
@@ -14,7 +14,7 @@ curl -fsS -o /dev/null -w '%{http_code} %{content_type}\n' "https://$APP_DOMAIN/
 
 Historical dev acceptance included registration/login, admin upload, playback, chat between two users, persistence after refresh, and denial of privileged requests without the proper role. In the EKS environment Metrics Server supplies CPU utilization to four HPAs; the observed dev range was 1–3 pods at a 70% CPU target. Cluster Autoscaler handles worker capacity separately. Node-group discovery alone does not demonstrate an increase in worker count.
 
-## Observability — implemented and verified in dev
+## 2. Find the right dashboard or log
 
 | Question | Flow and verification |
 | --- | --- |
@@ -27,9 +27,9 @@ Historical dev acceptance included registration/login, admin upload, playback, c
 
 ![Grafana dashboard for Jenkins metrics](screenshots/eks/65-grafana-jenkins-monitoring.png)
 
-Configuration and install commands are in [setup steps 15–18 and 24–26](setup-process.md). Sources: [stack values](../Monitoring/kube-prometheus-stack-values.yaml), [alert receiver](../Monitoring/alertmanager-email.yaml), [Grafana dashboard](../Monitoring/dashboards/jenkins-monitoring.json), [Fluent Bit](../Monitoring/cloudwatch/fluent-bit-values.yaml) and [EC2 journal agent](../Monitoring/cloudwatch/jenkins-agent.json).
+For the exact setup commands, see [the monitoring chapter](04-monitoring.md) and [the Jenkins and logging chapter](05-jenkins-and-logs.md). Sources: [stack values](../Monitoring/kube-prometheus-stack-values.yaml), [alert receiver](../Monitoring/alertmanager-email.yaml), [Grafana dashboard](../Monitoring/dashboards/jenkins-monitoring.json), [Fluent Bit](../Monitoring/cloudwatch/fluent-bit-values.yaml) and [EC2 journal agent](../Monitoring/cloudwatch/jenkins-agent.json).
 
-## Incident record and lessons
+## 3. If something fails
 
 | Symptom | Diagnostic and established cause | Resolution and verification |
 | --- | --- | --- |

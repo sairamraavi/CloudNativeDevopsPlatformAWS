@@ -4,55 +4,55 @@ Evidence spans multiple dev sessions and two AWS accounts. Use the recorded envi
 
 ## Local acceptance and containers
 
-- [Containers running](screenshots/local-validation/01-containers-running.png)
-- [Refresh success after](screenshots/local-validation/04-refresh-success-after.png)
-- [Backend health checks](screenshots/local-validation/05-backend-health-checks.png)
-- [Remote state verified](screenshots/local-validation/12-remote-state-verified.png)
-- [Vpc resource map](screenshots/local-validation/15-vpc-resource-map.png)
-- [Amd64 application images](screenshots/local-validation/26-amd64-application-images.png)
-- [Ecr published images](screenshots/local-validation/27-ecr-published-images.png)
-- [Frontend scan after runtime upgrade](screenshots/local-validation/30-frontend-scan-after-runtime-upgrade.png)
+- [![Containers running](screenshots/local-validation/01-containers-running.png)](screenshots/local-validation/01-containers-running.png)
+- [![Refresh success after](screenshots/local-validation/04-refresh-success-after.png)](screenshots/local-validation/04-refresh-success-after.png)
+- [![Backend health checks](screenshots/local-validation/05-backend-health-checks.png)](screenshots/local-validation/05-backend-health-checks.png)
+- [![Remote state verified](screenshots/local-validation/12-remote-state-verified.png)](screenshots/local-validation/12-remote-state-verified.png)
+- [![Vpc resource map](screenshots/local-validation/15-vpc-resource-map.png)](screenshots/local-validation/15-vpc-resource-map.png)
+- [![Amd64 application images](screenshots/local-validation/26-amd64-application-images.png)](screenshots/local-validation/26-amd64-application-images.png)
+- [![Ecr published images](screenshots/local-validation/27-ecr-published-images.png)](screenshots/local-validation/27-ecr-published-images.png)
+- [![Frontend scan after runtime upgrade](screenshots/local-validation/30-frontend-scan-after-runtime-upgrade.png)](screenshots/local-validation/30-frontend-scan-after-runtime-upgrade.png)
 
 ## AWS, EKS and authorization
 
-- [Eks apply complete](screenshots/eks/05-eks-apply-complete.png)
-- [Nodes ready two azs](screenshots/eks/06-nodes-ready-two-azs.png)
-- [External secrets operator ready](screenshots/eks/14-external-secrets-operator-ready.png)
-- [Aws load balancer controller ready](screenshots/eks/16-aws-load-balancer-controller-ready.png)
-- [Application deployments and ingress](screenshots/eks/17-application-deployments-and-ingress.png)
-- [Public dns and https validation](screenshots/eks/18-public-dns-and-https-validation.png)
-- [Admin api normal user forbidden](screenshots/eks/23b-admin-api-normal-user-forbidden.png)
-- [Jenkins infrastructure ready](screenshots/eks/39-jenkins-infrastructure-ready.png)
-- [Jenkins eks scoped access](screenshots/eks/45-jenkins-eks-scoped-access.png)
+- [![Eks apply complete](screenshots/eks/05-eks-apply-complete.png)](screenshots/eks/05-eks-apply-complete.png)
+- [![Nodes ready two azs](screenshots/eks/06-nodes-ready-two-azs.png)](screenshots/eks/06-nodes-ready-two-azs.png)
+- [![External secrets operator ready](screenshots/eks/14-external-secrets-operator-ready.png)](screenshots/eks/14-external-secrets-operator-ready.png)
+- [![Aws load balancer controller ready](screenshots/eks/16-aws-load-balancer-controller-ready.png)](screenshots/eks/16-aws-load-balancer-controller-ready.png)
+- [![Application deployments and ingress](screenshots/eks/17-application-deployments-and-ingress.png)](screenshots/eks/17-application-deployments-and-ingress.png)
+- [![Public dns and https validation](screenshots/eks/18-public-dns-and-https-validation.png)](screenshots/eks/18-public-dns-and-https-validation.png)
+- [![Admin api normal user forbidden](screenshots/eks/23b-admin-api-normal-user-forbidden.png)](screenshots/eks/23b-admin-api-normal-user-forbidden.png)
+- [![Jenkins infrastructure ready](screenshots/eks/39-jenkins-infrastructure-ready.png)](screenshots/eks/39-jenkins-infrastructure-ready.png)
+- [![Jenkins eks scoped access](screenshots/eks/45-jenkins-eks-scoped-access.png)](screenshots/eks/45-jenkins-eks-scoped-access.png)
 
 ## Dev application and operations
 
-- [Admin video upload success](screenshots/eks/20-admin-video-upload-success.png)
-- [Video playback success](screenshots/eks/21-video-playback-success.png)
-- [Frontend hpa scale up](screenshots/eks/26-frontend-hpa-scale-up.png)
-- [Frontend hpa scale down](screenshots/eks/27-frontend-hpa-scale-down.png)
-- [Monitoring persistent volumes bound](screenshots/eks/31-monitoring-persistent-volumes-bound.png)
-- [Prometheus target health](screenshots/eks/34b-prometheus-target-health.png)
-- [Alertmanager test alert](screenshots/eks/36-alertmanager-test-alert.png)
-- [Jenkins sonarqube quality gate](screenshots/eks/56-jenkins-sonarqube-quality-gate.png)
-- [Jenkins build push deploy success](screenshots/eks/57-jenkins-build-push-deploy-success.png)
-- [Jenkins github triggered build](screenshots/eks/61-jenkins-github-triggered-build.png)
-- [Grafana jenkins monitoring](screenshots/eks/65-grafana-jenkins-monitoring.png)
-- [Deployed release ecr scan results](screenshots/eks/66-deployed-release-ecr-scan-results.png)
-- [Alb access logs delivered](screenshots/eks/69-alb-access-logs-delivered.png)
-- [Dev environment teardown](screenshots/eks/70-dev-environment-teardown.png)
-- [Jenkins job restored](screenshots/eks/74-jenkins-job-restored.png)
-- [Restored jenkins pipeline deployment](screenshots/eks/76-restored-jenkins-pipeline-deployment.png)
+- [![Admin video upload success](screenshots/eks/20-admin-video-upload-success.png)](screenshots/eks/20-admin-video-upload-success.png)
+- [![Video playback success](screenshots/eks/21-video-playback-success.png)](screenshots/eks/21-video-playback-success.png)
+- [![Frontend hpa scale up](screenshots/eks/26-frontend-hpa-scale-up.png)](screenshots/eks/26-frontend-hpa-scale-up.png)
+- [![Frontend hpa scale down](screenshots/eks/27-frontend-hpa-scale-down.png)](screenshots/eks/27-frontend-hpa-scale-down.png)
+- [![Monitoring persistent volumes bound](screenshots/eks/31-monitoring-persistent-volumes-bound.png)](screenshots/eks/31-monitoring-persistent-volumes-bound.png)
+- [![Prometheus target health](screenshots/eks/34b-prometheus-target-health.png)](screenshots/eks/34b-prometheus-target-health.png)
+- [![Alertmanager test alert](screenshots/eks/36-alertmanager-test-alert.png)](screenshots/eks/36-alertmanager-test-alert.png)
+- [![Jenkins sonarqube quality gate](screenshots/eks/56-jenkins-sonarqube-quality-gate.png)](screenshots/eks/56-jenkins-sonarqube-quality-gate.png)
+- [![Jenkins build push deploy success](screenshots/eks/57-jenkins-build-push-deploy-success.png)](screenshots/eks/57-jenkins-build-push-deploy-success.png)
+- [![Jenkins github triggered build](screenshots/eks/61-jenkins-github-triggered-build.png)](screenshots/eks/61-jenkins-github-triggered-build.png)
+- [![Grafana jenkins monitoring](screenshots/eks/65-grafana-jenkins-monitoring.png)](screenshots/eks/65-grafana-jenkins-monitoring.png)
+- [![Deployed release ecr scan results](screenshots/eks/66-deployed-release-ecr-scan-results.png)](screenshots/eks/66-deployed-release-ecr-scan-results.png)
+- [![Alb access logs delivered](screenshots/eks/69-alb-access-logs-delivered.png)](screenshots/eks/69-alb-access-logs-delivered.png)
+- [![Dev environment teardown](screenshots/eks/70-dev-environment-teardown.png)](screenshots/eks/70-dev-environment-teardown.png)
+- [![Jenkins job restored](screenshots/eks/74-jenkins-job-restored.png)](screenshots/eks/74-jenkins-job-restored.png)
+- [![Restored jenkins pipeline deployment](screenshots/eks/76-restored-jenkins-pipeline-deployment.png)](screenshots/eks/76-restored-jenkins-pipeline-deployment.png)
 
 ## TLS and private storage
 
-- [Acm certificate issued](screenshots/security/04-acm-certificate-issued.png)
-- [Alb https listener](screenshots/security/06-alb-https-listener.png)
+- [![Acm certificate issued](screenshots/security/04-acm-certificate-issued.png)](screenshots/security/04-acm-certificate-issued.png)
+- [![Alb https listener](screenshots/security/06-alb-https-listener.png)](screenshots/security/06-alb-https-listener.png)
 
 ## Media persistence
 
-- [Media bucket security](screenshots/storage/03-media-bucket-security.png)
-- [Uploaded media objects](screenshots/storage/06-uploaded-media-objects.png)
+- [![Media bucket security](screenshots/storage/03-media-bucket-security.png)](screenshots/storage/03-media-bucket-security.png)
+- [![Uploaded media objects](screenshots/storage/06-uploaded-media-objects.png)](screenshots/storage/06-uploaded-media-objects.png)
 
 ## Staging and final acceptance
 
