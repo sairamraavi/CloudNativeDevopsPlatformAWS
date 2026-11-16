@@ -6,7 +6,7 @@
 
 **Project:** StreamingApp · **Region:** `ap-south-1` (Mumbai) · **Repository:** [CloudNativeDevopsPlatformAWS](https://github.com/sairamraavi/CloudNativeDevopsPlatformAWS) · **Implementation branch:** [`feature/capstone-end-to-end`](https://github.com/sairamraavi/CloudNativeDevopsPlatformAWS/tree/feature/capstone-end-to-end) · **Submission branch:** [`develop`](https://github.com/sairamraavi/CloudNativeDevopsPlatformAWS/tree/develop)
 
-> **Verification scope (16 November 2026):** Recorded runs cover development delivery and recovery, staging promotion and playback, and a Jenkins-approved production release. Production rollback and release recovery were verified. An isolated database restore remains pending. Screenshots reflect the sessions in which the checks were performed.
+> **Verification scope:** Development deployment, functional application tests, Jenkins-driven releases, core monitoring and a development rebuild have historical evidence. Staging infrastructure and a promotion attempt were demonstrated, but staging acceptance remains blocked by backend database connectivity/readiness. A fully approved and verified production rollout, rollback and isolated database recovery drill are **not claimed**. Screenshot artifacts document multiple sessions and AWS accounts; they are not proof that the services are running now.
 
 ## Contents
 
