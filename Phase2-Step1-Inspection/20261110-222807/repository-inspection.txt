@@ -1,0 +1,9 @@
+﻿Repository root: D:\HeroVired\Capstone\Group_folder\CloudNativeDevopsPlatformAWS
+Files scanned: 459
+Terraform resource declarations: 101
+Region references: ap-south-1=138; ap-southeast-2=285; us-east-1=147
+Account ID references: 706016980205=3; 529976312668=77; 065328824019=9
+ECR ARN references: 5
+Namespace/project-name references: 152
+Review CSVs for hard-coded Mumbai references, old account IDs, ECR region/account mismatches, and namespace drift.
+Local state/plan files found: 6. Contents were not opened.

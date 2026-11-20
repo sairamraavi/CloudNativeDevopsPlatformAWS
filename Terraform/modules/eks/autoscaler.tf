@@ -1,12 +1,14 @@
+
 locals {
-  autoscaler_oidc_host = replace(
+  autoscaler_oidc_host = var.enable_oidc ? trimprefix(
     aws_eks_cluster.this.identity[0].oidc[0].issuer,
-    "https://",
-    ""
-  )
+    "https://"
+  ) : null
 }
 
 resource "aws_iam_role" "autoscaler" {
+  count = var.enable_oidc ? 1 : 0
+
   name = "${var.name_prefix}-autoscaler"
 
   assume_role_policy = jsonencode({
@@ -14,7 +16,7 @@ resource "aws_iam_role" "autoscaler" {
     Statement = [{
       Effect = "Allow"
       Principal = {
-        Federated = aws_iam_openid_connect_provider.cluster.arn
+        Federated = aws_iam_openid_connect_provider.cluster[0].arn
       }
       Action = "sts:AssumeRoleWithWebIdentity"
       Condition = {
@@ -30,8 +32,10 @@ resource "aws_iam_role" "autoscaler" {
 }
 
 resource "aws_iam_role_policy" "autoscaler" {
+  count = var.enable_oidc ? 1 : 0
+
   name = "cluster-autoscaling"
-  role = aws_iam_role.autoscaler.id
+  role = aws_iam_role.autoscaler[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -70,6 +74,8 @@ resource "aws_iam_role_policy" "autoscaler" {
   })
 }
 
+# These tags do not depend on OIDC. Preserve them for possible
+# future Cluster Autoscaler installation.
 resource "aws_autoscaling_group_tag" "autoscaler_enabled" {
   for_each = aws_eks_node_group.this
 
@@ -95,5 +101,5 @@ resource "aws_autoscaling_group_tag" "autoscaler_cluster" {
 }
 
 output "autoscaler_role_arn" {
-  value = aws_iam_role.autoscaler.arn
+  value = var.enable_oidc ? aws_iam_role.autoscaler[0].arn : null
 }

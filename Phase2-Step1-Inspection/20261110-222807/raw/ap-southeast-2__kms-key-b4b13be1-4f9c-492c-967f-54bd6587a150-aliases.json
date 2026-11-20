@@ -1,0 +1,11 @@
+﻿{
+    "Aliases": [
+        {
+            "AliasName": "alias/aws/ebs",
+            "AliasArn": "arn:aws:kms:ap-southeast-2:529976312668:alias/aws/ebs",
+            "TargetKeyId": "b4b13be1-4f9c-492c-967f-54bd6587a150",
+            "CreationDate": "2026-10-21T02:51:20.014000+05:30",
+            "LastUpdatedDate": "2026-10-21T02:51:20.014000+05:30"
+        }
+    ]
+}

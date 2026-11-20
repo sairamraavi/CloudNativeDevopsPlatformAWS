@@ -1,0 +1,74 @@
+﻿{
+    "repositories": [
+        {
+            "repositoryArn": "arn:aws:ecr:ap-southeast-2:529976312668:repository/streamingapp-capstone-streaming",
+            "registryId": "529976312668",
+            "repositoryName": "streamingapp-capstone-streaming",
+            "repositoryUri": "529976312668.dkr.ecr.ap-southeast-2.amazonaws.com/streamingapp-capstone-streaming",
+            "createdAt": "2026-11-08T23:18:01.012000+05:30",
+            "imageTagMutability": "IMMUTABLE",
+            "imageScanningConfiguration": {
+                "scanOnPush": true
+            },
+            "encryptionConfiguration": {
+                "encryptionType": "AES256"
+            }
+        },
+        {
+            "repositoryArn": "arn:aws:ecr:ap-southeast-2:529976312668:repository/streamingapp-capstone-auth",
+            "registryId": "529976312668",
+            "repositoryName": "streamingapp-capstone-auth",
+            "repositoryUri": "529976312668.dkr.ecr.ap-southeast-2.amazonaws.com/streamingapp-capstone-auth",
+            "createdAt": "2026-11-08T23:18:01.425000+05:30",
+            "imageTagMutability": "IMMUTABLE",
+            "imageScanningConfiguration": {
+                "scanOnPush": true
+            },
+            "encryptionConfiguration": {
+                "encryptionType": "AES256"
+            }
+        },
+        {
+            "repositoryArn": "arn:aws:ecr:ap-southeast-2:529976312668:repository/streamingapp-capstone-admin",
+            "registryId": "529976312668",
+            "repositoryName": "streamingapp-capstone-admin",
+            "repositoryUri": "529976312668.dkr.ecr.ap-southeast-2.amazonaws.com/streamingapp-capstone-admin",
+            "createdAt": "2026-11-08T23:18:01.020000+05:30",
+            "imageTagMutability": "IMMUTABLE",
+            "imageScanningConfiguration": {
+                "scanOnPush": true
+            },
+            "encryptionConfiguration": {
+                "encryptionType": "AES256"
+            }
+        },
+        {
+            "repositoryArn": "arn:aws:ecr:ap-southeast-2:529976312668:repository/streamingapp-capstone-chat",
+            "registryId": "529976312668",
+            "repositoryName": "streamingapp-capstone-chat",
+            "repositoryUri": "529976312668.dkr.ecr.ap-southeast-2.amazonaws.com/streamingapp-capstone-chat",
+            "createdAt": "2026-11-08T23:18:01.420000+05:30",
+            "imageTagMutability": "IMMUTABLE",
+            "imageScanningConfiguration": {
+                "scanOnPush": true
+            },
+            "encryptionConfiguration": {
+                "encryptionType": "AES256"
+            }
+        },
+        {
+            "repositoryArn": "arn:aws:ecr:ap-southeast-2:529976312668:repository/streamingapp-capstone-frontend",
+            "registryId": "529976312668",
+            "repositoryName": "streamingapp-capstone-frontend",
+            "repositoryUri": "529976312668.dkr.ecr.ap-southeast-2.amazonaws.com/streamingapp-capstone-frontend",
+            "createdAt": "2026-11-08T23:18:01.795000+05:30",
+            "imageTagMutability": "IMMUTABLE",
+            "imageScanningConfiguration": {
+                "scanOnPush": true
+            },
+            "encryptionConfiguration": {
+                "encryptionType": "AES256"
+            }
+        }
+    ]
+}

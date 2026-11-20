@@ -1,0 +1,16 @@
+﻿{
+    "Policy": {
+        "PolicyName": "CostOptimizationHubServiceRolePolicy",
+        "PolicyId": "ANPAZKAPJZG4GRVZQTOT7",
+        "Arn": "arn:aws:iam::aws:policy/aws-service-role/CostOptimizationHubServiceRolePolicy",
+        "Path": "/aws-service-role/",
+        "DefaultVersionId": "v3",
+        "AttachmentCount": 1,
+        "PermissionsBoundaryUsageCount": 0,
+        "IsAttachable": true,
+        "Description": "Allows Cost Optimization Hub to retrieve organization information and collect optimization-related data and metadata.",
+        "CreateDate": "2023-11-26T08:03:59+00:00",
+        "UpdateDate": "2025-07-17T18:07:07+00:00",
+        "Tags": []
+    }
+}

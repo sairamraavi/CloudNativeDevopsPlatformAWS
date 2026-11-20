@@ -1,0 +1,16 @@
+﻿{
+    "Policy": {
+        "PolicyName": "ComputeOptimizerServiceRolePolicy",
+        "PolicyId": "ANPAZKAPJZG4HPOQZNRNJ",
+        "Arn": "arn:aws:iam::aws:policy/aws-service-role/ComputeOptimizerServiceRolePolicy",
+        "Path": "/aws-service-role/",
+        "DefaultVersionId": "v11",
+        "AttachmentCount": 1,
+        "PermissionsBoundaryUsageCount": 0,
+        "IsAttachable": true,
+        "Description": "Allows ComputeOptimizer to call AWS services and collect workload details on your behalf.",
+        "CreateDate": "2019-12-03T08:45:19+00:00",
+        "UpdateDate": "2026-11-06T20:57:07+00:00",
+        "Tags": []
+    }
+}

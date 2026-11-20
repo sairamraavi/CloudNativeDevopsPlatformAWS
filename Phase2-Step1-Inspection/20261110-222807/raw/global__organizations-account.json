@@ -1,0 +1,16 @@
+﻿{
+    "Organization": {
+        "Id": "o-i4xtpwge4o",
+        "Arn": "arn:aws:organizations::065328824019:organization/o-i4xtpwge4o",
+        "FeatureSet": "ALL",
+        "MasterAccountArn": "arn:aws:organizations::065328824019:account/o-i4xtpwge4o/065328824019",
+        "MasterAccountId": "065328824019",
+        "MasterAccountEmail": "ayushikhare.dev@gmail.com",
+        "AvailablePolicyTypes": [
+            {
+                "Type": "SERVICE_CONTROL_POLICY",
+                "Status": "ENABLED"
+            }
+        ]
+    }
+}

@@ -16,27 +16,20 @@ const s3Client = new S3Client({
   credentials: buildAwsCredentials(),
 });
 
+const encodeS3Key = (key) =>
+  key.split('/').map(encodeURIComponent).join('/');
+
 const buildPublicUrl = (key) => {
   if (!key) {
     return null;
   }
 
+  // Preserve legacy CDN or HTTP(S) URLs.
   if (/^https?:\/\//i.test(key)) {
     return key;
   }
 
-  const cdnBase = process.env.AWS_CDN_URL?.replace(/\/$/, '');
-  if (cdnBase) {
-    return `${cdnBase}/${key}`;
-  }
-
-  const bucket = process.env.AWS_S3_BUCKET;
-  const region = process.env.AWS_REGION;
-  if (!bucket || !region) {
-    return key;
-  }
-
-  return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+  return `/api/streaming/thumbnails/${encodeS3Key(key)}`;
 };
 
 module.exports = {

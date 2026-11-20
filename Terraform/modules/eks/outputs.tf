@@ -25,5 +25,5 @@ output "node_role_arn" {
 
 output "oidc_provider_arn" {
   description = "IAM OIDC provider ARN for workload trust policies."
-  value       = aws_iam_openid_connect_provider.cluster.arn
+  value       = var.enable_oidc ? aws_iam_openid_connect_provider.cluster[0].arn : null
 }

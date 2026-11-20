@@ -1,0 +1,16 @@
+﻿{
+    "Policy": {
+        "PolicyName": "AWSBudgetsSpendLimitMemberRolePolicy",
+        "PolicyId": "ANPAZKAPJZG4I5EGUOK5S",
+        "Arn": "arn:aws:iam::aws:policy/aws-service-role/AWSBudgetsSpendLimitMemberRolePolicy",
+        "Path": "/aws-service-role/",
+        "DefaultVersionId": "v4",
+        "AttachmentCount": 1,
+        "PermissionsBoundaryUsageCount": 0,
+        "IsAttachable": true,
+        "Description": "Grants the AWS Budgets service permissions to describe, stop, and terminate resources in a member account to enforce spend limit actions.",
+        "CreateDate": "2026-07-18T00:57:16+00:00",
+        "UpdateDate": "2026-08-13T20:47:33+00:00",
+        "Tags": []
+    }
+}

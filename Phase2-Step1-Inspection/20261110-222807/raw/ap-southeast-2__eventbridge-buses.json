@@ -1,0 +1,8 @@
+﻿{
+    "EventBuses": [
+        {
+            "Name": "default",
+            "Arn": "arn:aws:events:ap-southeast-2:529976312668:event-bus/default"
+        }
+    ]
+}

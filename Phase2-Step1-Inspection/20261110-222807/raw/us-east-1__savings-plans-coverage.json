@@ -1,0 +1,21 @@
+﻿{
+    "SavingsPlansCoverages": [
+        {
+            "Attributes": {
+                "INSTANCE_TYPE_FAMILY": null,
+                "REGION": null,
+                "SERVICE": null
+            },
+            "Coverage": {
+                "SpendCoveredBySavingsPlans": "0",
+                "OnDemandCost": "0.0361460088",
+                "TotalCost": "0.0361460088",
+                "CoveragePercentage": "0.0"
+            },
+            "TimePeriod": {
+                "Start": "2026-10-11",
+                "End": "2026-11-01"
+            }
+        }
+    ]
+}

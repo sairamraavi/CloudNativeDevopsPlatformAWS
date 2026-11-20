@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     const URL = process.env.MONGO_URI || 'mongodb://localhost:27017/streamingapp';
-    console.log('Connecting to MongoDB at:', URL);
+    console.log('Connecting to MongoDB');
     
     await mongoose.connect(URL, {
       useNewUrlParser: true,

@@ -1,0 +1,21 @@
+﻿{
+    "KeyMetadata": {
+        "AWSAccountId": "529976312668",
+        "KeyId": "b4b13be1-4f9c-492c-967f-54bd6587a150",
+        "Arn": "arn:aws:kms:ap-southeast-2:529976312668:key/b4b13be1-4f9c-492c-967f-54bd6587a150",
+        "CreationDate": "2026-10-21T02:51:19.901000+05:30",
+        "Enabled": true,
+        "Description": "Default key that protects my EBS volumes when no other key is defined",
+        "KeyUsage": "ENCRYPT_DECRYPT",
+        "KeyState": "Enabled",
+        "Origin": "AWS_KMS",
+        "KeyManager": "AWS",
+        "CustomerMasterKeySpec": "SYMMETRIC_DEFAULT",
+        "KeySpec": "SYMMETRIC_DEFAULT",
+        "EncryptionAlgorithms": [
+            "SYMMETRIC_DEFAULT"
+        ],
+        "MultiRegion": false,
+        "CurrentKeyMaterialId": "4b56b8cf3e367f86d37c6710e1610204b4922f72016d1b9bb9fed97e2915f58e"
+    }
+}

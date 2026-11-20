@@ -1,0 +1,6 @@
+﻿{
+    "registryId": "529976312668",
+    "repositoryName": "streamingapp-capstone-admin",
+    "lifecyclePolicyText": "{\"rules\":[{\"rulePriority\":1,\"description\":\"Expire untagged images seven days after there were pushed\",\"selection\":{\"tagStatus\":\"untagged\",\"countType\":\"sinceImagePushed\",\"countUnit\":\"days\",\"countNumber\":7},\"action\":{\"type\":\"expire\"}}]}",
+    "lastEvaluatedAt": "2026-11-10T14:35:49.083000+05:30"
+}

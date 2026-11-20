@@ -1,0 +1,14 @@
+﻿{
+    "Regions": [
+        {
+            "OptInStatus": "opt-in-not-required",
+            "Geography": [
+                {
+                    "Name": "Australia"
+                }
+            ],
+            "RegionName": "ap-southeast-2",
+            "Endpoint": "ec2.ap-southeast-2.amazonaws.com"
+        }
+    ]
+}

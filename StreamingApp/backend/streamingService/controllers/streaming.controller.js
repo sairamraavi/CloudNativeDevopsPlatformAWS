@@ -189,8 +189,7 @@ const getVideoDetails = async (req, res) => {
 
 const getThumbnail = async (req, res) => {
   try {
-    const rawKey = req.params[0];
-    const key = rawKey ? decodeURI(rawKey) : null;
+    const key = req.params[0] || null;
 
     if (!key) {
       return res.status(400).json({

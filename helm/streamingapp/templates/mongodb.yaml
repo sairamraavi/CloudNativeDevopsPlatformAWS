@@ -1,10 +1,10 @@
-{{- if .Values.mongodb.enabled }}
+﻿{{- if .Values.mongodb.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: mongodb-data
 spec:
-  storageClassName: gp2
+  storageClassName: {{ .Values.mongodb.storageClassName | quote }}
   accessModes:
     - ReadWriteOnce
   resources:
@@ -30,16 +30,37 @@ spec:
           image: {{ .Values.mongodb.image }}
           ports:
             - containerPort: {{ .Values.mongodb.port }}
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.app.secretName }}
+                  key: MONGO_ROOT_USERNAME
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.app.secretName }}
+                  key: MONGO_ROOT_PASSWORD
           resources:
             {{- toYaml .Values.mongodb.resources | nindent 12 }}
           volumeMounts:
             - name: mongodb-data
               mountPath: /data/db
           readinessProbe:
-            tcpSocket:
-              port: {{ .Values.mongodb.port }}
-            initialDelaySeconds: 10
+            exec:
+              command:
+                - /bin/sh
+                - -ec
+                - >-
+                  mongosh --quiet
+                  --username "$MONGO_INITDB_ROOT_USERNAME"
+                  --password "$MONGO_INITDB_ROOT_PASSWORD"
+                  --authenticationDatabase admin
+                  --eval "quit(db.adminCommand('ping').ok ? 0 : 2)"
+            initialDelaySeconds: 15
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
       volumes:
         - name: mongodb-data
           persistentVolumeClaim:

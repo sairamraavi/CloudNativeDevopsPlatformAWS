@@ -1,0 +1,8 @@
+﻿{
+    "AttachedPolicies": [
+        {
+            "PolicyName": "CostOptimizationHubServiceRolePolicy",
+            "PolicyArn": "arn:aws:iam::aws:policy/aws-service-role/CostOptimizationHubServiceRolePolicy"
+        }
+    ]
+}
