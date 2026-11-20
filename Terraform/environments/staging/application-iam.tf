@@ -1,13 +1,18 @@
-# Staging application S3 workload identity.
-# Mirrors the develop workload permissions but scopes trust and names to staging.
+variable "media_bucket_arn" {
+  description = "Persistent media bucket ARN supplied by the deployment operator."
+  type        = string
+
+  validation {
+    condition = can(regex(
+      "^arn:[^:]+:s3:::[a-z0-9][a-z0-9.-]+$",
+      var.media_bucket_arn
+    ))
+    error_message = "Provide an S3 bucket ARN without an object path."
+  }
+}
 
 locals {
-  application_namespace = "streaming-app-staging"
-
-  application_oidc_host = trimprefix(
-    module.eks.cluster_oidc_issuer_url,
-    "https://"
-  )
+  application_namespace = "streaming-app-stg"
 
   media_workloads = {
     admin = {
@@ -26,23 +31,25 @@ data "aws_iam_policy_document" "media_workload_trust" {
 
   statement {
     effect  = "Allow"
-    actions = ["sts:AssumeRole", "sts:TagSession"]
+    actions = ["sts:AssumeRoleWithWebIdentity"]
 
     principals {
-      type        = "Service"
-      identifiers = ["pods.eks.amazonaws.com"]
+      type        = "Federated"
+      identifiers = [module.eks.oidc_provider_arn]
     }
 
     condition {
       test     = "StringEquals"
-      variable = "aws:RequestTag/kubernetes-namespace"
-      values   = [local.application_namespace]
+      variable = "${local.application_oidc_host}:aud"
+      values   = ["sts.amazonaws.com"]
     }
 
     condition {
       test     = "StringEquals"
-      variable = "aws:RequestTag/kubernetes-service-account"
-      values   = [each.value.service_account]
+      variable = "${local.application_oidc_host}:sub"
+      values = [
+        "system:serviceaccount:${local.application_namespace}:${each.value.service_account}"
+      ]
     }
   }
 }
@@ -51,15 +58,11 @@ resource "aws_iam_role" "media_workload" {
   for_each = local.media_workloads
 
   name               = "streamingapp-capstone-staging-${each.key}-media"
-  description        = "Staging S3 media access for the ${each.key} service through EKS Pod Identity."
+  description        = "S3 media access for the ${each.key} service."
   assume_role_policy = data.aws_iam_policy_document.media_workload_trust[each.key].json
 
   tags = {
-    Project     = "streamingapp-capstone"
-    Environment = "staging"
-    Service     = each.key
-    ManagedBy   = "Terraform"
-    Purpose     = "Application S3 access through EKS Pod Identity"
+    Service = each.key
   }
 }
 
@@ -72,8 +75,8 @@ data "aws_iam_policy_document" "media_workload_permissions" {
     actions = each.value.actions
 
     resources = [
-      "${aws_s3_bucket.media.arn}/videos/*",
-      "${aws_s3_bucket.media.arn}/thumbnails/*",
+      "${var.media_bucket_arn}/videos/*",
+      "${var.media_bucket_arn}/thumbnails/*",
     ]
   }
 }
@@ -86,18 +89,8 @@ resource "aws_iam_role_policy" "media_workload" {
   policy = data.aws_iam_policy_document.media_workload_permissions[each.key].json
 }
 
-resource "aws_eks_pod_identity_association" "media_workload" {
-  for_each = local.media_workloads
-
-  cluster_name    = module.eks.cluster_name
-  namespace       = local.application_namespace
-  service_account = each.value.service_account
-  role_arn        = aws_iam_role.media_workload[each.key].arn
-}
-
-
 output "media_workload_role_arns" {
-  description = "Staging IAM role ARNs used by application workloads."
+  description = "IAM role ARNs to annotate on application service accounts."
   value = {
     for service, role in aws_iam_role.media_workload :
     service => role.arn

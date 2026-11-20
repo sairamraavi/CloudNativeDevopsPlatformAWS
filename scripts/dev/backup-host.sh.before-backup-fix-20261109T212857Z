@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Root on the Jenkins instance. The caller supplies a unique staging directory.
+set -euo pipefail
+umask 077
+dest=${1:?}
+mkdir -m 700 "$dest"
+cd /opt/capstone-sonarqube
+test -s /var/lib/jenkins/jobs/streamingapp-dev/config.xml
+test -s /etc/cloudflared/token
+docker compose exec -T db pg_isready -U sonar -d sonar >/dev/null
+resume() {
+  rc=$?
+  trap - EXIT
+  docker compose start sonarqube || rc=1
+  systemctl start jenkins || rc=1
+  exit "$rc"
+}
+trap resume EXIT
+systemctl stop jenkins
+docker compose stop sonarqube
+tar -C /var/lib -czf "$dest/jenkins-home.tar.gz" jenkins
+docker compose exec -T db pg_dump -Fc -U sonar sonar > "$dest/sonarqube.dump"
+docker compose exec -T db pg_restore -l < "$dest/sonarqube.dump" >/dev/null
+docker compose run --rm -T --no-deps --entrypoint tar sonarqube -C /opt/sonarqube/extensions -czf - . > "$dest/sonarqube-extensions.tar.gz"
+tar -C / -czf "$dest/host-private-config.tar.gz" etc/cloudflared/token opt/capstone-sonarqube/compose.yaml opt/capstone-sonarqube/.env
+(cd "$dest" && sha256sum jenkins-home.tar.gz sonarqube.dump sonarqube-extensions.tar.gz host-private-config.tar.gz > SHA256SUMS)
+chown -R ubuntu:ubuntu "$dest"

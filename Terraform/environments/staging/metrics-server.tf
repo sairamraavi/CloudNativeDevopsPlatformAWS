@@ -1,7 +1,3 @@
-# Metrics Server EKS add-on, matching the develop add-on version.
-# Confirm AWS offers this version for EKS 1.36 in ap-southeast-2
-# before running a plan or provisioning.
-
 resource "aws_eks_addon" "metrics_server" {
   cluster_name  = module.eks.cluster_name
   addon_name    = "metrics-server"
@@ -11,10 +7,7 @@ resource "aws_eks_addon" "metrics_server" {
   resolve_conflicts_on_update = "PRESERVE"
 
   tags = {
-    Name        = "streamingapp-capstone-staging-metrics-server"
-    Project     = "streamingapp-capstone"
-    Environment = "staging"
-    ManagedBy   = "Terraform"
+    Name = "streamingapp-capstone-staging-metrics-server"
   }
 
   depends_on = [module.eks]

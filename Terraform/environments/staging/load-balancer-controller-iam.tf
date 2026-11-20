@@ -1,61 +1,50 @@
-# AWS Load Balancer Controller staging IAM permissions.
-# AWS permissions are provided through EKS Pod Identity, not IRSA/OIDC.
-
 data "aws_iam_policy_document" "load_balancer_controller_trust" {
   statement {
-    effect = "Allow"
-
-    actions = [
-      "sts:AssumeRole",
-      "sts:TagSession"
-    ]
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
 
     principals {
-      type        = "Service"
-      identifiers = ["pods.eks.amazonaws.com"]
+      type        = "Federated"
+      identifiers = [module.eks.oidc_provider_arn]
     }
 
     condition {
       test     = "StringEquals"
-      variable = "aws:RequestTag/kubernetes-namespace"
-      values   = ["kube-system"]
+      variable = "${local.application_oidc_host}:aud"
+      values   = ["sts.amazonaws.com"]
     }
 
     condition {
       test     = "StringEquals"
-      variable = "aws:RequestTag/kubernetes-service-account"
-      values   = ["aws-load-balancer-controller"]
+      variable = "${local.application_oidc_host}:sub"
+      values = [
+        "system:serviceaccount:kube-system:aws-load-balancer-controller"
+      ]
     }
   }
 }
 
 resource "aws_iam_role" "load_balancer_controller" {
   name        = "streamingapp-capstone-staging-load-balancer-controller"
-  description = "Pod Identity role for the AWS Load Balancer Controller in staging."
+  description = "IRSA role for the AWS Load Balancer Controller."
 
   assume_role_policy = data.aws_iam_policy_document.load_balancer_controller_trust.json
 
   tags = {
-    Project     = "streamingapp-capstone"
-    Environment = "staging"
-    Service     = "aws-load-balancer-controller"
-    ManagedBy   = "Terraform"
+    Service = "aws-load-balancer-controller"
   }
 }
 
 resource "aws_iam_policy" "load_balancer_controller" {
   name        = "streamingapp-capstone-staging-load-balancer-controller"
-  description = "AWS Load Balancer Controller v2.14.1 IAM policy."
+  description = "AWS Load Balancer Controller v2.14.1 official IAM policy."
 
   policy = file(
-    "${path.module}/policies/aws-load-balancer-controller-v2.14.1.json"
+    "${path.module}/../dev/policies/aws-load-balancer-controller-v2.14.1.json"
   )
 
   tags = {
-    Project     = "streamingapp-capstone"
-    Environment = "staging"
-    Service     = "aws-load-balancer-controller"
-    ManagedBy   = "Terraform"
+    Service = "aws-load-balancer-controller"
   }
 }
 
@@ -65,14 +54,6 @@ resource "aws_iam_role_policy_attachment" "load_balancer_controller" {
 }
 
 output "load_balancer_controller_role_arn" {
-  description = "EKS Pod Identity role ARN for the staging AWS Load Balancer Controller."
+  description = "IRSA role ARN for the AWS Load Balancer Controller."
   value       = aws_iam_role.load_balancer_controller.arn
-}
-
-
-resource "aws_eks_pod_identity_association" "load_balancer_controller" {
-  cluster_name    = module.eks.cluster_name
-  namespace       = "kube-system"
-  service_account = "aws-load-balancer-controller"
-  role_arn        = aws_iam_role.load_balancer_controller.arn
 }

@@ -1,7 +1,5 @@
-
 resource "aws_iam_role" "ebs_csi" {
-  name        = "streamingapp-capstone-staging-ebs-csi"
-  description = "EKS Pod Identity role for the staging EBS CSI driver."
+  name = "streamingapp-capstone-staging-ebs-csi"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -24,12 +22,6 @@ resource "aws_iam_role" "ebs_csi" {
       }
     ]
   })
-
-  tags = {
-    Project     = "streamingapp-capstone"
-    Environment = "staging"
-    ManagedBy   = "Terraform"
-  }
 }
 
 resource "aws_iam_role_policy_attachment" "ebs_csi" {
@@ -51,9 +43,7 @@ resource "aws_eks_addon" "ebs_csi" {
   }
 
   tags = {
-    Project     = "streamingapp-capstone"
-    Environment = "staging"
-    ManagedBy   = "Terraform"
+    Name = "streamingapp-capstone-staging-ebs-csi"
   }
 
   depends_on = [
