@@ -1,0 +1,49 @@
+﻿PHASE 2 AWS READ-ONLY AUDIT
+Started: 2026-11-10T02:44:29.5846628+05:30
+Profile: personal | Expected account: 529976312668
+Output: D:\HeroVired\Capstone\Group_folder\CloudNativeDevopsPlatformAWS\Phase2-AWS-Audit\20261110-024429
+Verified account: 529976312668
+Caller ARN: arn:aws:sts::529976312668:assumed-role/AccountFullAccessRole/8418e458-2061-7062-13c4-0266c43dfab8
+Regions: ap-south-1, ca-central-1, eu-central-1, us-west-1, us-west-2, eu-north-1, eu-west-3, eu-west-2, eu-west-1, ap-northeast-3, ap-northeast-2, ap-northeast-1, sa-east-1, ap-southeast-1, ap-southeast-2, us-east-1, us-east-2
+
+===== REGION ap-south-1 =====
+
+===== REGION ca-central-1 =====
+
+===== REGION eu-central-1 =====
+
+===== REGION us-west-1 =====
+
+===== REGION us-west-2 =====
+
+===== REGION eu-north-1 =====
+
+===== REGION eu-west-3 =====
+
+===== REGION eu-west-2 =====
+
+===== REGION eu-west-1 =====
+
+===== REGION ap-northeast-3 =====
+
+===== REGION ap-northeast-2 =====
+
+===== REGION ap-northeast-1 =====
+
+===== REGION sa-east-1 =====
+
+===== REGION ap-southeast-1 =====
+
+===== REGION ap-southeast-2 =====
+
+===== REGION us-east-1 =====
+
+===== REGION us-east-2 =====
+
+===== GLOBAL / ACCOUNT-WIDE =====
+
+===== COMPLETE =====
+Successful checks: 61
+Blocked/failed checks: 463
+Output folder: D:\HeroVired\Capstone\Group_folder\CloudNativeDevopsPlatformAWS\Phase2-AWS-Audit\20261110-024429
+No AWS resources were modified.

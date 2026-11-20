@@ -1,0 +1,2 @@
+﻿System.Management.Automation.RemoteException
+aws: [ERROR]: Unable to create or refresh login credentials due to insufficient permissions. You may be missing permission for the 'signin:CreateOAuth2Token' action.

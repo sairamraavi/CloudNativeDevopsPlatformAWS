@@ -1,0 +1,259 @@
+﻿{
+    "Roles": [
+        {
+            "Path": "/managed/",
+            "RoleName": "AccountFullAccessRole",
+            "RoleId": "AROAXWZIMYNOOLRVGQBRK",
+            "Arn": "arn:aws:iam::529976312668:role/managed/AccountFullAccessRole",
+            "CreateDate": "2026-10-08T01:28:40+00:00",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "account-access.amazonaws.com"
+                        },
+                        "Action": [
+                            "sts:AssumeRole",
+                            "sts:SetContext"
+                        ]
+                    }
+                ]
+            },
+            "MaxSessionDuration": 43200
+        },
+        {
+            "Path": "/managed/",
+            "RoleName": "AWSManagedAccountManagementAccessRole",
+            "RoleId": "AROAXWZIMYNOPCSW6WPLO",
+            "Arn": "arn:aws:iam::529976312668:role/managed/AWSManagedAccountManagementAccessRole",
+            "CreateDate": "2026-10-08T01:28:40+00:00",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "AWS": "arn:aws:iam::065328824019:root"
+                        },
+                        "Action": "sts:AssumeRole",
+                        "Condition": {
+                            "StringEquals": {
+                                "aws:CalledViaLast": "aws-role-management.amazonaws.com"
+                            }
+                        }
+                    }
+                ]
+            },
+            "MaxSessionDuration": 3600
+        },
+        {
+            "Path": "/managed/",
+            "RoleName": "AWSManagedAdvancedFeaturesActivationRole",
+            "RoleId": "AROAXWZIMYNOCZ7OUUK7V",
+            "Arn": "arn:aws:iam::529976312668:role/managed/AWSManagedAdvancedFeaturesActivationRole",
+            "CreateDate": "2026-10-08T01:28:41+00:00",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "AWS": "arn:aws:iam::065328824019:root"
+                        },
+                        "Action": "sts:AssumeRole",
+                        "Condition": {
+                            "StringEquals": {
+                                "aws:CalledViaLast": "account.amazonaws.com"
+                            }
+                        }
+                    }
+                ]
+            },
+            "MaxSessionDuration": 3600
+        },
+        {
+            "Path": "/aws-service-role/notifications.amazonaws.com/",
+            "RoleName": "AWSServiceRoleForAwsUserNotifications",
+            "RoleId": "AROAXWZIMYNOF5RESVVGB",
+            "Arn": "arn:aws:iam::529976312668:role/aws-service-role/notifications.amazonaws.com/AWSServiceRoleForAwsUserNotifications",
+            "CreateDate": "2026-10-17T07:34:28+00:00",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "notifications.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                    }
+                ]
+            },
+            "MaxSessionDuration": 3600
+        },
+        {
+            "Path": "/aws-service-role/spendlimit_member.budgets.amazonaws.com/",
+            "RoleName": "AWSServiceRoleForBudgetsSpendLimitMember",
+            "RoleId": "AROAXWZIMYNOHUJYRMIBP",
+            "Arn": "arn:aws:iam::529976312668:role/aws-service-role/spendlimit_member.budgets.amazonaws.com/AWSServiceRoleForBudgetsSpendLimitMember",
+            "CreateDate": "2026-10-08T01:28:40+00:00",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "spendlimit_member.budgets.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                    }
+                ]
+            },
+            "MaxSessionDuration": 3600
+        },
+        {
+            "Path": "/aws-service-role/compute-optimizer.amazonaws.com/",
+            "RoleName": "AWSServiceRoleForComputeOptimizer",
+            "RoleId": "AROAXWZIMYNONYXWHD2JZ",
+            "Arn": "arn:aws:iam::529976312668:role/aws-service-role/compute-optimizer.amazonaws.com/AWSServiceRoleForComputeOptimizer",
+            "CreateDate": "2026-10-17T07:34:38+00:00",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "compute-optimizer.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                    }
+                ]
+            },
+            "MaxSessionDuration": 3600
+        },
+        {
+            "Path": "/aws-service-role/cost-optimization-hub.bcm.amazonaws.com/",
+            "RoleName": "AWSServiceRoleForCostOptimizationHub",
+            "RoleId": "AROAXWZIMYNONNT7W5WVS",
+            "Arn": "arn:aws:iam::529976312668:role/aws-service-role/cost-optimization-hub.bcm.amazonaws.com/AWSServiceRoleForCostOptimizationHub",
+            "CreateDate": "2026-10-17T07:34:38+00:00",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "cost-optimization-hub.bcm.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                    }
+                ]
+            },
+            "MaxSessionDuration": 3600
+        },
+        {
+            "Path": "/aws-service-role/role-manager.iam.amazonaws.com/",
+            "RoleName": "AWSServiceRoleForIAMRoleManager",
+            "RoleId": "AROAXWZIMYNOM5GQ4TBHO",
+            "Arn": "arn:aws:iam::529976312668:role/aws-service-role/role-manager.iam.amazonaws.com/AWSServiceRoleForIAMRoleManager",
+            "CreateDate": "2026-10-08T01:28:40+00:00",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "role-manager.iam.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                    }
+                ]
+            },
+            "MaxSessionDuration": 3600
+        },
+        {
+            "Path": "/aws-service-role/organizations.amazonaws.com/",
+            "RoleName": "AWSServiceRoleForOrganizations",
+            "RoleId": "AROAXWZIMYNOP33UYKBLK",
+            "Arn": "arn:aws:iam::529976312668:role/aws-service-role/organizations.amazonaws.com/AWSServiceRoleForOrganizations",
+            "CreateDate": "2026-10-08T01:28:40+00:00",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "organizations.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                    }
+                ]
+            },
+            "MaxSessionDuration": 3600
+        },
+        {
+            "Path": "/aws-service-role/resource-explorer-2.amazonaws.com/",
+            "RoleName": "AWSServiceRoleForResourceExplorer",
+            "RoleId": "AROAXWZIMYNOELKBLXEH6",
+            "Arn": "arn:aws:iam::529976312668:role/aws-service-role/resource-explorer-2.amazonaws.com/AWSServiceRoleForResourceExplorer",
+            "CreateDate": "2026-10-17T07:54:19+00:00",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "resource-explorer-2.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                    }
+                ]
+            },
+            "MaxSessionDuration": 3600
+        },
+        {
+            "Path": "/aws-service-role/support.amazonaws.com/",
+            "RoleName": "AWSServiceRoleForSupport",
+            "RoleId": "AROAXWZIMYNODCVV37YBT",
+            "Arn": "arn:aws:iam::529976312668:role/aws-service-role/support.amazonaws.com/AWSServiceRoleForSupport",
+            "CreateDate": "2026-10-08T01:28:17+00:00",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "support.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                    }
+                ]
+            },
+            "Description": "Enables resource access for AWS to provide billing, administrative and support services",
+            "MaxSessionDuration": 3600
+        },
+        {
+            "Path": "/aws-service-role/trustedadvisor.amazonaws.com/",
+            "RoleName": "AWSServiceRoleForTrustedAdvisor",
+            "RoleId": "AROAXWZIMYNOE7RTOSKBT",
+            "Arn": "arn:aws:iam::529976312668:role/aws-service-role/trustedadvisor.amazonaws.com/AWSServiceRoleForTrustedAdvisor",
+            "CreateDate": "2026-10-08T01:28:17+00:00",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "trustedadvisor.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                    }
+                ]
+            },
+            "Description": "Access for the AWS Trusted Advisor Service to help reduce cost, increase performance, and improve security of your AWS environment.",
+            "MaxSessionDuration": 3600
+        }
+    ]
+}

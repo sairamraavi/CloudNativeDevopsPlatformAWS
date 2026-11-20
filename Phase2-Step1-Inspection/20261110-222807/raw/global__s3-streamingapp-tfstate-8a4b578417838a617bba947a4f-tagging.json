@@ -1,0 +1,20 @@
+﻿{
+    "TagSet": [
+        {
+            "Key": "Project",
+            "Value": "streamingapp-capstone"
+        },
+        {
+            "Key": "Environment",
+            "Value": "bootstrap"
+        },
+        {
+            "Key": "ManagedBy",
+            "Value": "Terraform"
+        },
+        {
+            "Key": "Name",
+            "Value": "streamingapp-capstone-terraform-state"
+        }
+    ]
+}

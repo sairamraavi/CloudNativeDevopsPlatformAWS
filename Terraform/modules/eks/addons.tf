@@ -2,7 +2,7 @@ resource "aws_eks_addon" "vpc_cni" {
   cluster_name             = aws_eks_cluster.this.name
   addon_name               = "vpc-cni"
   addon_version            = var.addon_versions.vpc_cni
-  service_account_role_arn = aws_iam_role.cni.arn
+  service_account_role_arn = var.enable_oidc ? aws_iam_role.cni[0].arn : null
 
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "PRESERVE"
@@ -26,7 +26,4 @@ resource "aws_eks_addon" "core" {
   resolve_conflicts_on_update = "PRESERVE"
 
   tags = var.tags
-  depends_on = [
-    aws_eks_node_group.this,
-  ]
 }

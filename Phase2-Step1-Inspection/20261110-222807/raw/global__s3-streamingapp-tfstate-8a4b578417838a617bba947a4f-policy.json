@@ -1,0 +1,3 @@
+﻿{
+    "Policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"DenyInsecureTransport\",\"Effect\":\"Deny\",\"Principal\":\"*\",\"Action\":\"s3:*\",\"Resource\":[\"arn:aws:s3:::streamingapp-tfstate-8a4b578417838a617bba947a4f\",\"arn:aws:s3:::streamingapp-tfstate-8a4b578417838a617bba947a4f/*\"],\"Condition\":{\"Bool\":{\"aws:SecureTransport\":\"false\"}}}]}"
+}

@@ -51,7 +51,7 @@ variable "admin_role_arn" {
 }
 
 variable "public_access_cidrs" {
-  description = "Explicit workstation IPv4 addresses allowed to access the public API."
+  description = "IPv4 CIDR ranges allowed to access the EKS public API."
   type        = list(string)
 
   validation {
@@ -59,10 +59,10 @@ variable "public_access_cidrs" {
       length(var.public_access_cidrs) > 0 &&
       alltrue([
         for cidr in var.public_access_cidrs :
-        can(cidrnetmask(cidr)) && can(regex("/32$", cidr))
+        can(cidrnetmask(cidr))
       ])
     )
-    error_message = "Provide one or more IPv4 /32 CIDRs for administrator workstations."
+    error_message = "Provide one or more valid IPv4 CIDR ranges."
   }
 }
 
@@ -111,4 +111,66 @@ variable "addon_versions" {
     kube_proxy         = string
     pod_identity_agent = string
   })
+}
+
+variable "node_group_mode" {
+  description = "Node group topology: per_az creates one node group per subnet; shared creates one node group across all private subnets."
+  type        = string
+  default     = "per_az"
+
+  validation {
+    condition     = contains(["per_az", "shared"], var.node_group_mode)
+    error_message = "node_group_mode must be either per_az or shared."
+  }
+}
+
+variable "node_min_size" {
+  description = "Minimum node count for shared node group mode."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.node_min_size >= 0
+    error_message = "node_min_size must be zero or greater."
+  }
+}
+
+variable "node_desired_size" {
+  description = "Desired node count for shared node group mode."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.node_desired_size >= 0
+    error_message = "node_desired_size must be zero or greater."
+  }
+}
+
+variable "node_max_size" {
+  description = "Maximum node count for shared node group mode."
+  type        = number
+  default     = 2
+
+  validation {
+    condition     = var.node_max_size >= 1
+    error_message = "node_max_size must be at least 1."
+  }
+  validation {
+    condition = (
+      var.node_min_size <= var.node_desired_size &&
+      var.node_desired_size <= var.node_max_size &&
+      floor(var.node_min_size) == var.node_min_size &&
+      floor(var.node_desired_size) == var.node_desired_size &&
+      floor(var.node_max_size) == var.node_max_size
+    )
+
+    error_message = "Node scaling values must be whole numbers and satisfy min_size <= desired_size <= max_size."
+  }
+}
+
+
+variable "enable_oidc" {
+  description = "Whether to create OIDC provider and IRSA workload roles."
+  type        = bool
+  default     = true
 }

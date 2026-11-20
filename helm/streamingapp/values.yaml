@@ -30,25 +30,21 @@ services:
   auth:
     repository: streamingapp-capstone-auth
     serviceAccountName: streamingapp-auth
-    roleArn: ""
     port: 3001
     healthPath: /health
   streaming:
     repository: streamingapp-capstone-streaming
     serviceAccountName: streamingapp-streaming
-    roleArn: ""
     port: 3002
     healthPath: /api/health
   admin:
     repository: streamingapp-capstone-admin
     serviceAccountName: streamingapp-admin
-    roleArn: ""
     port: 3003
     healthPath: /api/health
   chat:
     repository: streamingapp-capstone-chat
     serviceAccountName: streamingapp-chat
-    roleArn: ""
     port: 3004
     healthPath: /api/health
 

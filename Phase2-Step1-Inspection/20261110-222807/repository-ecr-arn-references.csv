@@ -1,0 +1,6 @@
+﻿"File","Arn"
+"checks\Phase2-AWS-Audit-v1\20261110-020903\raw\ap-southeast-2__ecr-repositories.json","arn:aws:ecr:ap-southeast-2:529976312668:repository/streamingapp-capstone-streaming"
+"checks\Phase2-AWS-Audit-v1\20261110-020903\raw\ap-southeast-2__ecr-repositories.json","arn:aws:ecr:ap-southeast-2:529976312668:repository/streamingapp-capstone-auth"
+"checks\Phase2-AWS-Audit-v1\20261110-020903\raw\ap-southeast-2__ecr-repositories.json","arn:aws:ecr:ap-southeast-2:529976312668:repository/streamingapp-capstone-admin"
+"checks\Phase2-AWS-Audit-v1\20261110-020903\raw\ap-southeast-2__ecr-repositories.json","arn:aws:ecr:ap-southeast-2:529976312668:repository/streamingapp-capstone-chat"
+"checks\Phase2-AWS-Audit-v1\20261110-020903\raw\ap-southeast-2__ecr-repositories.json","arn:aws:ecr:ap-southeast-2:529976312668:repository/streamingapp-capstone-frontend"

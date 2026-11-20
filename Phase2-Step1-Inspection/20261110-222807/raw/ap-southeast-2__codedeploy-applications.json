@@ -1,0 +1,10 @@
+﻿System.Management.Automation.RemoteException
+aws: [ERROR]: An error occurred (ParamValidation): argument command: Found invalid choice 'codedeploy'
+System.Management.Automation.RemoteException
+System.Management.Automation.RemoteException
+usage: aws [options] <command> <subcommand> [<subcommand> ...] [parameters]
+To see help text, you can run:
+System.Management.Automation.RemoteException
+  aws help
+  aws <command> help
+  aws <command> <subcommand> help

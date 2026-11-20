@@ -1,0 +1,8 @@
+﻿{
+    "Keys": [
+        {
+            "KeyId": "b4b13be1-4f9c-492c-967f-54bd6587a150",
+            "KeyArn": "arn:aws:kms:ap-southeast-2:529976312668:key/b4b13be1-4f9c-492c-967f-54bd6587a150"
+        }
+    ]
+}

@@ -1,0 +1,15 @@
+﻿{
+    "Account":  "529976312668",
+    "CallerArn":  "arn:aws:sts::529976312668:assumed-role/AccountFullAccessRole/8418e458-2061-7062-13c4-0266c43dfab8",
+    "Region":  "ap-southeast-2",
+    "Profile":  "personal",
+    "StartedAt":  "20261110-222807",
+    "TotalChecks":  235,
+    "SuccessfulChecks":  201,
+    "FailedOrBlockedChecks":  34,
+    "FailureRatePercent":  14.47,
+    "RepositoryRoot":  "D:\\HeroVired\\Capstone\\Group_folder\\CloudNativeDevopsPlatformAWS",
+    "ReadOnly":  true,
+    "SecretValuesRead":  false,
+    "TerraformStateContentsRead":  false
+}

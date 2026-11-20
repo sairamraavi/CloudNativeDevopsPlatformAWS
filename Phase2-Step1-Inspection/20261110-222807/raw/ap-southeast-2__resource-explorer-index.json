@@ -1,0 +1,9 @@
+﻿{
+    "Indexes": [
+        {
+            "Region": "ap-southeast-2",
+            "Arn": "arn:aws:resource-explorer-2:ap-southeast-2:529976312668:index/6a757f94-9414-4aef-afcc-387474e65b07",
+            "Type": "LOCAL"
+        }
+    ]
+}

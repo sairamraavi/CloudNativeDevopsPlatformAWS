@@ -1,0 +1,542 @@
+﻿
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # aws_cloudwatch_log_group.application will be updated in-place
+  ~ resource "aws_cloudwatch_log_group" "application" {
+        id                          = "/streamingapp-capstone/staging/application"
+        name                        = "/streamingapp-capstone/staging/application"
+      ~ retention_in_days           = 7 -> 3
+        tags                        = {
+            "Environment" = "staging"
+            "ManagedBy"   = "Terraform"
+            "Project"     = "streamingapp-capstone"
+        }
+        # (8 unchanged attributes hidden)
+    }
+
+  # aws_cloudwatch_log_group.jenkins will be updated in-place
+  ~ resource "aws_cloudwatch_log_group" "jenkins" {
+        id                          = "/streamingapp-capstone/staging/jenkins"
+        name                        = "/streamingapp-capstone/staging/jenkins"
+      ~ retention_in_days           = 7 -> 3
+        tags                        = {
+            "Environment" = "staging"
+            "ManagedBy"   = "Terraform"
+            "Project"     = "streamingapp-capstone"
+        }
+        # (8 unchanged attributes hidden)
+    }
+
+  # aws_iam_policy.load_balancer_controller will be created
+  + resource "aws_iam_policy" "load_balancer_controller" {
+      + arn              = (known after apply)
+      + attachment_count = (known after apply)
+      + description      = "AWS Load Balancer Controller v2.14.1 IAM policy."
+      + id               = (known after apply)
+      + name             = "streamingapp-capstone-staging-load-balancer-controller"
+      + name_prefix      = (known after apply)
+      + path             = "/"
+      + policy           = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action    = [
+                          + "iam:CreateServiceLinkedRole",
+                        ]
+                      + Condition = {
+                          + StringEquals = {
+                              + "iam:AWSServiceName" = "elasticloadbalancing.amazonaws.com"
+                            }
+                        }
+                      + Effect    = "Allow"
+                      + Resource  = "*"
+                    },
+                  + {
+                      + Action   = [
+                          + "ec2:DescribeAccountAttributes",
+                          + "ec2:DescribeAddresses",
+                          + "ec2:DescribeAvailabilityZones",
+                          + "ec2:DescribeInternetGateways",
+                          + "ec2:DescribeVpcs",
+                          + "ec2:DescribeVpcPeeringConnections",
+                          + "ec2:DescribeSubnets",
+                          + "ec2:DescribeSecurityGroups",
+                          + "ec2:DescribeInstances",
+                          + "ec2:DescribeNetworkInterfaces",
+                          + "ec2:DescribeTags",
+                          + "ec2:GetCoipPoolUsage",
+                          + "ec2:DescribeCoipPools",
+                          + "ec2:GetSecurityGroupsForVpc",
+                          + "ec2:DescribeIpamPools",
+                          + "ec2:DescribeRouteTables",
+                          + "elasticloadbalancing:DescribeLoadBalancers",
+                          + "elasticloadbalancing:DescribeLoadBalancerAttributes",
+                          + "elasticloadbalancing:DescribeListeners",
+                          + "elasticloadbalancing:DescribeListenerCertificates",
+                          + "elasticloadbalancing:DescribeSSLPolicies",
+                          + "elasticloadbalancing:DescribeRules",
+                          + "elasticloadbalancing:DescribeTargetGroups",
+                          + "elasticloadbalancing:DescribeTargetGroupAttributes",
+                          + "elasticloadbalancing:DescribeTargetHealth",
+                          + "elasticloadbalancing:DescribeTags",
+                          + "elasticloadbalancing:DescribeTrustStores",
+                          + "elasticloadbalancing:DescribeListenerAttributes",
+                          + "elasticloadbalancing:DescribeCapacityReservation",
+                        ]
+                      + Effect   = "Allow"
+                      + Resource = "*"
+                    },
+                  + {
+                      + Action   = [
+                          + "cognito-idp:DescribeUserPoolClient",
+                          + "acm:ListCertificates",
+                          + "acm:DescribeCertificate",
+                          + "iam:ListServerCertificates",
+                          + "iam:GetServerCertificate",
+                          + "waf-regional:GetWebACL",
+                          + "waf-regional:GetWebACLForResource",
+                          + "waf-regional:AssociateWebACL",
+                          + "waf-regional:DisassociateWebACL",
+                          + "wafv2:GetWebACL",
+                          + "wafv2:GetWebACLForResource",
+                          + "wafv2:AssociateWebACL",
+                          + "wafv2:DisassociateWebACL",
+                          + "shield:GetSubscriptionState",
+                          + "shield:DescribeProtection",
+                          + "shield:CreateProtection",
+                          + "shield:DeleteProtection",
+                        ]
+                      + Effect   = "Allow"
+                      + Resource = "*"
+                    },
+                  + {
+                      + Action   = [
+                          + "ec2:AuthorizeSecurityGroupIngress",
+                          + "ec2:RevokeSecurityGroupIngress",
+                        ]
+                      + Effect   = "Allow"
+                      + Resource = "*"
+                    },
+                  + {
+                      + Action   = [
+                          + "ec2:CreateSecurityGroup",
+                        ]
+                      + Effect   = "Allow"
+                      + Resource = "*"
+                    },
+                  + {
+                      + Action    = [
+                          + "ec2:CreateTags",
+                        ]
+                      + Condition = {
+                          + Null         = {
+                              + "aws:RequestTag/elbv2.k8s.aws/cluster" = "false"
+                            }
+                          + StringEquals = {
+                              + "ec2:CreateAction" = "CreateSecurityGroup"
+                            }
+                        }
+                      + Effect    = "Allow"
+                      + Resource  = "arn:aws:ec2:*:*:security-group/*"
+                    },
+                  + {
+                      + Action    = [
+                          + "ec2:CreateTags",
+                          + "ec2:DeleteTags",
+                        ]
+                      + Condition = {
+                          + Null = {
+                              + "aws:RequestTag/elbv2.k8s.aws/cluster"  = "true"
+                              + "aws:ResourceTag/elbv2.k8s.aws/cluster" = "false"
+                            }
+                        }
+                      + Effect    = "Allow"
+                      + Resource  = "arn:aws:ec2:*:*:security-group/*"
+                    },
+                  + {
+                      + Action    = [
+                          + "ec2:AuthorizeSecurityGroupIngress",
+                          + "ec2:RevokeSecurityGroupIngress",
+                          + "ec2:DeleteSecurityGroup",
+                        ]
+                      + Condition = {
+                          + Null = {
+                              + "aws:ResourceTag/elbv2.k8s.aws/cluster" = "false"
+                            }
+                        }
+                      + Effect    = "Allow"
+                      + Resource  = "*"
+                    },
+                  + {
+                      + Action    = [
+                          + "elasticloadbalancing:CreateLoadBalancer",
+                          + "elasticloadbalancing:CreateTargetGroup",
+                        ]
+                      + Condition = {
+                          + Null = {
+                              + "aws:RequestTag/elbv2.k8s.aws/cluster" = "false"
+                            }
+                        }
+                      + Effect    = "Allow"
+                      + Resource  = "*"
+                    },
+                  + {
+                      + Action   = [
+                          + "elasticloadbalancing:CreateListener",
+                          + "elasticloadbalancing:DeleteListener",
+                          + "elasticloadbalancing:CreateRule",
+                          + "elasticloadbalancing:DeleteRule",
+                        ]
+                      + Effect   = "Allow"
+                      + Resource = "*"
+                    },
+                  + {
+                      + Action    = [
+                          + "elasticloadbalancing:AddTags",
+                          + "elasticloadbalancing:RemoveTags",
+                        ]
+                      + Condition = {
+                          + Null = {
+                              + "aws:RequestTag/elbv2.k8s.aws/cluster"  = "true"
+                              + "aws:ResourceTag/elbv2.k8s.aws/cluster" = "false"
+                            }
+                        }
+                      + Effect    = "Allow"
+                      + Resource  = [
+                          + "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*",
+                          + "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*",
+                          + "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*",
+                        ]
+                    },
+                  + {
+                      + Action   = [
+                          + "elasticloadbalancing:AddTags",
+                          + "elasticloadbalancing:RemoveTags",
+                        ]
+                      + Effect   = "Allow"
+                      + Resource = [
+                          + "arn:aws:elasticloadbalancing:*:*:listener/net/*/*/*",
+                          + "arn:aws:elasticloadbalancing:*:*:listener/app/*/*/*",
+                          + "arn:aws:elasticloadbalancing:*:*:listener-rule/net/*/*/*",
+                          + "arn:aws:elasticloadbalancing:*:*:listener-rule/app/*/*/*",
+                        ]
+                    },
+                  + {
+                      + Action    = [
+                          + "elasticloadbalancing:ModifyLoadBalancerAttributes",
+                          + "elasticloadbalancing:SetIpAddressType",
+                          + "elasticloadbalancing:SetSecurityGroups",
+                          + "elasticloadbalancing:SetSubnets",
+                          + "elasticloadbalancing:DeleteLoadBalancer",
+                          + "elasticloadbalancing:ModifyTargetGroup",
+                          + "elasticloadbalancing:ModifyTargetGroupAttributes",
+                          + "elasticloadbalancing:DeleteTargetGroup",
+                          + "elasticloadbalancing:ModifyListenerAttributes",
+                          + "elasticloadbalancing:ModifyCapacityReservation",
+                          + "elasticloadbalancing:ModifyIpPools",
+                        ]
+                      + Condition = {
+                          + Null = {
+                              + "aws:ResourceTag/elbv2.k8s.aws/cluster" = "false"
+                            }
+                        }
+                      + Effect    = "Allow"
+                      + Resource  = "*"
+                    },
+                  + {
+                      + Action    = [
+                          + "elasticloadbalancing:AddTags",
+                        ]
+                      + Condition = {
+                          + Null         = {
+                              + "aws:RequestTag/elbv2.k8s.aws/cluster" = "false"
+                            }
+                          + StringEquals = {
+                              + "elasticloadbalancing:CreateAction" = [
+                                  + "CreateTargetGroup",
+                                  + "CreateLoadBalancer",
+                                ]
+                            }
+                        }
+                      + Effect    = "Allow"
+                      + Resource  = [
+                          + "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*",
+                          + "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*",
+                          + "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*",
+                        ]
+                    },
+                  + {
+                      + Action   = [
+                          + "elasticloadbalancing:RegisterTargets",
+                          + "elasticloadbalancing:DeregisterTargets",
+                        ]
+                      + Effect   = "Allow"
+                      + Resource = "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*"
+                    },
+                  + {
+                      + Action   = [
+                          + "elasticloadbalancing:SetWebAcl",
+                          + "elasticloadbalancing:ModifyListener",
+                          + "elasticloadbalancing:AddListenerCertificates",
+                          + "elasticloadbalancing:RemoveListenerCertificates",
+                          + "elasticloadbalancing:ModifyRule",
+                          + "elasticloadbalancing:SetRulePriorities",
+                        ]
+                      + Effect   = "Allow"
+                      + Resource = "*"
+                    },
+                ]
+              + Version   = "2012-10-17"
+            }
+        )
+      + policy_id        = (known after apply)
+      + tags             = {
+          + "Environment" = "staging"
+          + "ManagedBy"   = "Terraform"
+          + "Project"     = "streamingapp-capstone"
+          + "Service"     = "aws-load-balancer-controller"
+        }
+      + tags_all         = {
+          + "Environment" = "staging"
+          + "ManagedBy"   = "Terraform"
+          + "Project"     = "streamingapp-capstone"
+          + "Service"     = "aws-load-balancer-controller"
+        }
+    }
+
+  # aws_iam_role.external_secrets will be updated in-place
+  ~ resource "aws_iam_role" "external_secrets" {
+      ~ description           = "Allows External Secrets Operator to read the staging application secret through EKS Pod Identity." -> "External Secrets Operator Pod Identity role."
+        id                    = "streamingapp-capstone-staging-external-secrets"
+        name                  = "streamingapp-capstone-staging-external-secrets"
+        tags                  = {
+            "Environment" = "staging"
+            "ManagedBy"   = "Terraform"
+            "Project"     = "streamingapp-capstone"
+            "Purpose"     = "External Secrets Operator Pod Identity"
+        }
+        # (11 unchanged attributes hidden)
+
+        # (1 unchanged block hidden)
+    }
+
+  # aws_iam_role.load_balancer_controller will be created
+  + resource "aws_iam_role" "load_balancer_controller" {
+      + arn                   = (known after apply)
+      + assume_role_policy    = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action    = [
+                          + "sts:TagSession",
+                          + "sts:AssumeRole",
+                        ]
+                      + Condition = {
+                          + StringEquals = {
+                              + "aws:RequestTag/kubernetes-namespace"       = "kube-system"
+                              + "aws:RequestTag/kubernetes-service-account" = "aws-load-balancer-controller"
+                            }
+                        }
+                      + Effect    = "Allow"
+                      + Principal = {
+                          + Service = "pods.eks.amazonaws.com"
+                        }
+                    },
+                ]
+              + Version   = "2012-10-17"
+            }
+        )
+      + create_date           = (known after apply)
+      + description           = "IRSA role for the AWS Load Balancer Controller in staging."
+      + force_detach_policies = false
+      + id                    = (known after apply)
+      + managed_policy_arns   = (known after apply)
+      + max_session_duration  = 3600
+      + name                  = "streamingapp-capstone-staging-load-balancer-controller"
+      + name_prefix           = (known after apply)
+      + path                  = "/"
+      + tags                  = {
+          + "Environment" = "staging"
+          + "ManagedBy"   = "Terraform"
+          + "Project"     = "streamingapp-capstone"
+          + "Service"     = "aws-load-balancer-controller"
+        }
+      + tags_all              = {
+          + "Environment" = "staging"
+          + "ManagedBy"   = "Terraform"
+          + "Project"     = "streamingapp-capstone"
+          + "Service"     = "aws-load-balancer-controller"
+        }
+      + unique_id             = (known after apply)
+
+      + inline_policy (known after apply)
+    }
+
+  # aws_iam_role_policy.external_secrets will be updated in-place
+  ~ resource "aws_iam_role_policy" "external_secrets" {
+        id          = "streamingapp-capstone-staging-external-secrets:read-staging-application-secret"
+        name        = "read-staging-application-secret"
+      ~ policy      = jsonencode(
+          ~ {
+              ~ Statement = [
+                  ~ {
+                      + Sid      = "ReadStagingApplicationSecret"
+                        # (3 unchanged attributes hidden)
+                    },
+                ]
+                # (1 unchanged attribute hidden)
+            }
+        )
+        # (2 unchanged attributes hidden)
+    }
+
+  # aws_iam_role_policy.media_workload["admin"] will be updated in-place
+  ~ resource "aws_iam_role_policy" "media_workload" {
+        id          = "streamingapp-capstone-staging-admin-media:media-object-access"
+        name        = "media-object-access"
+      ~ policy      = jsonencode(
+          ~ {
+              ~ Statement = [
+                  ~ {
+                      ~ Sid      = "ServiceMediaObjectAccess" -> "ServiceMediaAccess"
+                        # (3 unchanged attributes hidden)
+                    },
+                ]
+                # (1 unchanged attribute hidden)
+            }
+        )
+        # (2 unchanged attributes hidden)
+    }
+
+  # aws_iam_role_policy.media_workload["streaming"] will be updated in-place
+  ~ resource "aws_iam_role_policy" "media_workload" {
+        id          = "streamingapp-capstone-staging-streaming-media:media-object-access"
+        name        = "media-object-access"
+      ~ policy      = jsonencode(
+          ~ {
+              ~ Statement = [
+                  ~ {
+                      ~ Action   = [
+                          - "s3:GetObject",
+                        ] -> "s3:GetObject"
+                      ~ Sid      = "ServiceMediaObjectAccess" -> "ServiceMediaAccess"
+                        # (2 unchanged attributes hidden)
+                    },
+                ]
+                # (1 unchanged attribute hidden)
+            }
+        )
+        # (2 unchanged attributes hidden)
+    }
+
+  # aws_iam_role_policy_attachment.load_balancer_controller will be created
+  + resource "aws_iam_role_policy_attachment" "load_balancer_controller" {
+      + id         = (known after apply)
+      + policy_arn = (known after apply)
+      + role       = "streamingapp-capstone-staging-load-balancer-controller"
+    }
+
+  # aws_s3_bucket_cors_configuration.media will be updated in-place
+  ~ resource "aws_s3_bucket_cors_configuration" "media" {
+        id                    = "streamingapp-staging-media-7c19daa454d226e73aef94bab2"
+        # (3 unchanged attributes hidden)
+
+      - cors_rule {
+          - allowed_headers = [
+              - "*",
+            ] -> null
+          - allowed_methods = [
+              - "GET",
+              - "HEAD",
+              - "PUT",
+            ] -> null
+          - allowed_origins = [
+              - "https://staging.env.com",
+            ] -> null
+          - expose_headers  = [
+              - "ETag",
+            ] -> null
+            id              = null
+          - max_age_seconds = 300 -> null
+        }
+      + cors_rule {
+          + allowed_headers = [
+              + "*",
+            ]
+          + allowed_methods = [
+              + "GET",
+              + "HEAD",
+              + "PUT",
+            ]
+          + allowed_origins = [
+              + "http://localhost:3000",
+              + "https://staging.env.com",
+            ]
+          + expose_headers  = [
+              + "ETag",
+            ]
+            id              = null
+          + max_age_seconds = 300
+        }
+    }
+
+  # aws_vpc_security_group_ingress_rule.jenkins_ssh will be updated in-place
+  ~ resource "aws_vpc_security_group_ingress_rule" "jenkins_ssh" {
+      ~ cidr_ipv4              = "103.121.153.55/32" -> "103.121.153.52/32"
+        id                     = "sgr-0386fdb354772ad10"
+        # (9 unchanged attributes hidden)
+    }
+
+  # module.eks.aws_autoscaling_group_tag.autoscaler_cluster["shared"] will be created
+  + resource "aws_autoscaling_group_tag" "autoscaler_cluster" {
+      + autoscaling_group_name = "eks-streamingapp-capstone-staging-shared-86d0ee0a-94f5-9c54-3c1b-a9f4bb3f5c73"
+      + id                     = (known after apply)
+      + region                 = "ap-southeast-2"
+
+      + tag {
+          + key                 = "k8s.io/cluster-autoscaler/streamingapp-capstone-staging-eks"
+          + propagate_at_launch = false
+          + value               = "owned"
+        }
+    }
+
+  # module.eks.aws_autoscaling_group_tag.autoscaler_enabled["shared"] will be created
+  + resource "aws_autoscaling_group_tag" "autoscaler_enabled" {
+      + autoscaling_group_name = "eks-streamingapp-capstone-staging-shared-86d0ee0a-94f5-9c54-3c1b-a9f4bb3f5c73"
+      + id                     = (known after apply)
+      + region                 = "ap-southeast-2"
+
+      + tag {
+          + key                 = "k8s.io/cluster-autoscaler/enabled"
+          + propagate_at_launch = false
+          + value               = "true"
+        }
+    }
+
+  # module.eks.aws_launch_template.nodes will be updated in-place
+  ~ resource "aws_launch_template" "nodes" {
+      - description                          = "staging-recovery-c7i-flex-large" -> null
+        id                                   = "lt-0fe990813e47ed202"
+      - instance_type                        = "c7i-flex.large" -> null
+      ~ latest_version                       = 2 -> (known after apply)
+        name                                 = "streamingapp-capstone-staging-nodes-6c41ce2d5154c67d933a536162"
+        tags                                 = {
+            "Environment" = "staging"
+            "ManagedBy"   = "Terraform"
+            "Project"     = "streamingapp-capstone"
+        }
+      ~ update_default_version               = true -> false
+        # (16 unchanged attributes hidden)
+
+        # (4 unchanged blocks hidden)
+    }
+
+Plan: 5 to add, 9 to change, 0 to destroy.
+
+Changes to Outputs:
+  + load_balancer_controller_role_arn = (known after apply)

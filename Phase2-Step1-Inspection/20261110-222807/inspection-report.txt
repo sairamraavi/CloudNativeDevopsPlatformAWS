@@ -1,0 +1,27 @@
+﻿Verified caller: arn:aws:sts::529976312668:assumed-role/AccountFullAccessRole/8418e458-2061-7062-13c4-0266c43dfab8
+
+[1/8] BILLING / COST / COMMITMENTS
+
+[2/8] CORE REGIONAL INFRASTRUCTURE — ap-southeast-2
+
+[3/8] CHILD RESOURCE / SECURITY CONFIGURATION DETAILS
+
+[4/8] GLOBAL SERVICES / S3 / DNS / CDN
+
+[5/8] SECURITY / GOVERNANCE / AUDIT / BACKUP
+
+[6/8] TERRAFORM STATE / REPOSITORY STATIC CONFIGURATION
+
+[7/8] CHECK COMPLETENESS
+Covered category: Identity/account guard
+Covered category: Billing/Cost Explorer/commitments
+Covered category: EC2/VPC/networking
+Covered category: EKS/ECR/containers
+Covered category: RDS/EFS/other databases
+Covered category: S3/storage/state
+Covered category: IAM/KMS/Secrets/SSM metadata
+Covered category: CloudWatch/logging/alarms
+Covered category: AWS Config/CloudTrail/security services
+Covered category: Backup/retention
+Covered category: DNS/ACM/CloudFront/WAF
+Covered category: Terraform static configuration

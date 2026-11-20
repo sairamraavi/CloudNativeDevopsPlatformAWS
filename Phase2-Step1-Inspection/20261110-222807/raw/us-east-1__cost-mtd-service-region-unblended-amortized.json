@@ -1,0 +1,205 @@
+﻿{
+    "GroupDefinitions": [
+        {
+            "Type": "DIMENSION",
+            "Key": "SERVICE"
+        },
+        {
+            "Type": "DIMENSION",
+            "Key": "REGION"
+        }
+    ],
+    "ResultsByTime": [
+        {
+            "TimePeriod": {
+                "Start": "2026-11-01",
+                "End": "2026-11-10"
+            },
+            "Total": {},
+            "Groups": [
+                {
+                    "Keys": [
+                        "AWS Cost Explorer",
+                        "us-east-1"
+                    ],
+                    "Metrics": {
+                        "AmortizedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "NetUnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "AWS Glue",
+                        "ap-southeast-2"
+                    ],
+                    "Metrics": {
+                        "AmortizedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "NetUnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "AWS Key Management Service",
+                        "ap-southeast-2"
+                    ],
+                    "Metrics": {
+                        "AmortizedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "NetUnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "AWS Secrets Manager",
+                        "ap-southeast-2"
+                    ],
+                    "Metrics": {
+                        "AmortizedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "NetUnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Amazon Simple Notification Service",
+                        "ap-southeast-2"
+                    ],
+                    "Metrics": {
+                        "AmortizedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "NetUnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Amazon Simple Queue Service",
+                        "ap-southeast-2"
+                    ],
+                    "Metrics": {
+                        "AmortizedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "NetUnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Amazon Simple Storage Service",
+                        "ap-southeast-2"
+                    ],
+                    "Metrics": {
+                        "AmortizedCost": {
+                            "Amount": "-0.0000000001",
+                            "Unit": "USD"
+                        },
+                        "NetUnblendedCost": {
+                            "Amount": "-0.0000000001",
+                            "Unit": "USD"
+                        },
+                        "UnblendedCost": {
+                            "Amount": "-0.0000000001",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Amazon Simple Storage Service",
+                        "global"
+                    ],
+                    "Metrics": {
+                        "AmortizedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "NetUnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        }
+                    }
+                },
+                {
+                    "Keys": [
+                        "Tax",
+                        "NoRegion"
+                    ],
+                    "Metrics": {
+                        "AmortizedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "NetUnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        },
+                        "UnblendedCost": {
+                            "Amount": "0",
+                            "Unit": "USD"
+                        }
+                    }
+                }
+            ],
+            "Estimated": true
+        }
+    ],
+    "DimensionValueAttributes": []
+}

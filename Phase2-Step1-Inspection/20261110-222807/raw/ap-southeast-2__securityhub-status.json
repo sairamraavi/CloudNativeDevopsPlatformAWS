@@ -1,0 +1,2 @@
+﻿System.Management.Automation.RemoteException
+aws: [ERROR]: An error occurred (AccessDeniedException) when calling the DescribeHub operation: User: arn:aws:sts::529976312668:assumed-role/AccountFullAccessRole/8418e458-2061-7062-13c4-0266c43dfab8 is not authorized to perform: securityhub:DescribeHub on resource: arn:aws:securityhub:ap-southeast-2:529976312668:hub/default with an explicit deny in a service control policy: arn:aws:organizations::065328824019:policy/o-i4xtpwge4o/service_control_policy/p-r5hwa2v0

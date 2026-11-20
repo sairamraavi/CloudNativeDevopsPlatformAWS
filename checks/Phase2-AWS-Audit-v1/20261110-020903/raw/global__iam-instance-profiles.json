@@ -1,0 +1,12 @@
+﻿{
+    "InstanceProfiles": [
+        {
+            "Path": "/",
+            "InstanceProfileName": "ecommerce-store-ssm-profile",
+            "InstanceProfileId": "AIPAXWZIMYNON3MDMNOGD",
+            "Arn": "arn:aws:iam::529976312668:instance-profile/ecommerce-store-ssm-profile",
+            "CreateDate": "2026-10-20T21:57:04+00:00",
+            "Roles": []
+        }
+    ]
+}

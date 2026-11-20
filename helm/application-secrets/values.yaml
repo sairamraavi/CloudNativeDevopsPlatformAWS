@@ -1,9 +1,5 @@
-awsRegion: ap-south-1
+awsRegion: ap-southeast-2
 
-secretReader:
-  serviceAccountName: streamingapp-secret-reader
-  roleArn: ""
-
-remoteSecretName: streamingapp-capstone/dev/application
+remoteSecretName: streamingapp-capstone/staging/application
 targetSecretName: streamingapp-application
 refreshInterval: 1h

@@ -1,0 +1,13 @@
+﻿{
+    "ComplianceSummary": {
+        "CompliantResourceCount": {
+            "CappedCount": 0,
+            "CapExceeded": false
+        },
+        "NonCompliantResourceCount": {
+            "CappedCount": 0,
+            "CapExceeded": false
+        },
+        "ComplianceSummaryTimestamp": "2026-11-10T22:34:48.615000+05:30"
+    }
+}

@@ -1,0 +1,94 @@
+--- a/Terraform/bootstrap/main.tf
++++ b/Terraform/bootstrap/main.tf
+@@ -1,7 +1,7 @@
+ variable "aws_region" {
+   description = "AWS region for project resources."
+   type        = string
+-  default     = "ap-south-1"
++  default     = "ap-southeast-2"
+ }
+ 
+ variable "expected_account_id" {
+--- a/Terraform/persistent/main.tf
++++ b/Terraform/persistent/main.tf
+@@ -22,7 +22,7 @@
+ variable "aws_region" {
+   description = "Region for persistent project resources."
+   type        = string
+-  default     = "ap-south-1"
++  default     = "ap-southeast-2"
+ }
+ 
+ provider "aws" {
+@@ -38,28 +38,3 @@
+   }
+ }
+ 
+-module "ecr" {
+-  source      = "../modules/ecr"
+-  name_prefix = "streamingapp-capstone"
+-  services    = ["frontend", "auth", "streaming", "admin", "chat"]
+-  tags = {
+-    Project     = "streamingapp-capstone"
+-    Environment = "shared"
+-    ManagedBy   = "Terraform"
+-  }
+-}
+-
+-output "repository_urls" {
+-  description = "Image repository URLs keyed by service."
+-  value       = module.ecr.repository_urls
+-}
+-
+-output "repository_arns" {
+-  description = "Image repository ARNs for scoping IAM permissions."
+-  value       = module.ecr.repository_arns
+-}
+-
+-output "repository_names" {
+-  description = "Image repository names keyed by service."
+-  value       = module.ecr.repository_names
+-}--- a/Terraform/environments/dev/main.tf
++++ b/Terraform/environments/dev/main.tf
+@@ -24,7 +24,7 @@
+ variable "aws_region" {
+   description = "Region for project infrastructure."
+   type        = string
+-  default     = "ap-south-1"
++  default     = "ap-southeast-2"
+ }
+ 
+ variable "availability_zones" {
+--- a/Monitoring/cluster-autoscaler-values.yaml
++++ b/Monitoring/cluster-autoscaler-values.yaml
+@@ -1,7 +1,7 @@
+ fullnameOverride: cluster-autoscaler
+ 
+ cloudProvider: aws
+-awsRegion: ap-south-1
++awsRegion: ap-southeast-2
+ 
+ autoDiscovery:
+   clusterName: streamingapp-capstone-dev-eks
+--- a/Monitoring/cloudwatch/fluent-bit-values.yaml
++++ b/Monitoring/cloudwatch/fluent-bit-values.yaml
+@@ -81,7 +81,7 @@
+     [OUTPUT]
+         Name cloudwatch_logs
+         Match kube.*
+-        region ap-south-1
++        region ap-southeast-2
+         log_group_name /streamingapp-capstone/dev/application
+         log_stream_prefix application-
+         auto_create_group Off
+--- a/Monitoring/alertmanager-email.yaml
++++ b/Monitoring/alertmanager-email.yaml
+@@ -30,7 +30,7 @@
+       emailConfigs:
+         - to: sairamraavi@outlook.com
+           from: monitoring@sairamraavi.com
+-          smarthost: email-smtp.ap-south-1.amazonaws.com:587
++          smarthost: email-smtp.ap-southeast-2.amazonaws.com:587
+           authUsername: "__SES_SMTP_USERNAME__"
+           authPassword:
+             name: alertmanager-ses-smtp

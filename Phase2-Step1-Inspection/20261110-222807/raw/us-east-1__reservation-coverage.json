@@ -1,0 +1,26 @@
+﻿{
+    "CoveragesByTime": [
+        {
+            "TimePeriod": {
+                "Start": "2026-10-11",
+                "End": "2026-11-10"
+            },
+            "Total": {
+                "CoverageHours": {
+                    "OnDemandHours": "1.369167",
+                    "ReservedHours": "0",
+                    "TotalRunningHours": "1.369167",
+                    "CoverageHoursPercentage": "0"
+                }
+            }
+        }
+    ],
+    "Total": {
+        "CoverageHours": {
+            "OnDemandHours": "1.369167",
+            "ReservedHours": "0",
+            "TotalRunningHours": "1.369167",
+            "CoverageHoursPercentage": "0"
+        }
+    }
+}

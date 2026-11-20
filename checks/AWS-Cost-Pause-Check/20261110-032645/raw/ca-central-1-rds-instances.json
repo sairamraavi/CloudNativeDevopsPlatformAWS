@@ -1,0 +1,2 @@
+﻿System.Management.Automation.RemoteException
+aws: [ERROR]: An error occurred (AccessDenied) when calling the DescribeDBInstances operation: User: arn:aws:sts::529976312668:assumed-role/AccountFullAccessRole/8418e458-2061-7062-13c4-0266c43dfab8 is not authorized to perform: rds:DescribeDBInstances on resource: arn:aws:rds:ca-central-1:529976312668:db:* with an explicit deny in a service control policy: arn:aws:organizations::065328824019:policy/o-i4xtpwge4o/service_control_policy/p-fd55mtpt

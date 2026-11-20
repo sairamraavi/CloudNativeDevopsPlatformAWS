@@ -1,0 +1,13 @@
+﻿{
+    "Buckets": [
+        {
+            "Name": "streamingapp-tfstate-8a4b578417838a617bba947a4f",
+            "CreationDate": "2026-11-08T16:57:09+00:00",
+            "BucketArn": "arn:aws:s3:::streamingapp-tfstate-8a4b578417838a617bba947a4f"
+        }
+    ],
+    "Owner": {
+        "ID": "38f55147f9c2c73c8991639f393ab987f3890d7beca7f89b5be3a25b543ab72c"
+    },
+    "Prefix": null
+}

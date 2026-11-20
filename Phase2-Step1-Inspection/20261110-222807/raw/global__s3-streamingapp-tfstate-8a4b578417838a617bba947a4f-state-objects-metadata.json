@@ -1,0 +1,21 @@
+﻿{
+    "IsTruncated": false,
+    "Contents": [
+        {
+            "Key": "shared/ecr.tfstate",
+            "LastModified": "2026-11-08T17:48:05+00:00",
+            "ETag": "\"fffaae7aab1493576200e425ef84686a\"",
+            "ChecksumAlgorithm": [
+                "SHA256"
+            ],
+            "ChecksumType": "FULL_OBJECT",
+            "Size": 17380,
+            "StorageClass": "STANDARD"
+        }
+    ],
+    "Name": "streamingapp-tfstate-8a4b578417838a617bba947a4f",
+    "Prefix": "",
+    "MaxKeys": 1000,
+    "EncodingType": "url",
+    "KeyCount": 1
+}

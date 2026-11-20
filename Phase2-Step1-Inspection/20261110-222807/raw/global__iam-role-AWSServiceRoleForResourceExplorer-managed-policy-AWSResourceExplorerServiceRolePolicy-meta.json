@@ -1,0 +1,16 @@
+﻿{
+    "Policy": {
+        "PolicyName": "AWSResourceExplorerServiceRolePolicy",
+        "PolicyId": "ANPAZKAPJZG4K2H54PAUL",
+        "Arn": "arn:aws:iam::aws:policy/aws-service-role/AWSResourceExplorerServiceRolePolicy",
+        "Path": "/aws-service-role/",
+        "DefaultVersionId": "v59",
+        "AttachmentCount": 1,
+        "PermissionsBoundaryUsageCount": 0,
+        "IsAttachable": true,
+        "Description": "Allows Resource Explorer to view resources and CloudTrail events on your behalf to index your resources for search.",
+        "CreateDate": "2022-10-25T20:35:29+00:00",
+        "UpdateDate": "2026-10-30T20:27:08+00:00",
+        "Tags": []
+    }
+}

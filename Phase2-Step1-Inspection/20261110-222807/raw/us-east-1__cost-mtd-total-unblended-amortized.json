@@ -1,0 +1,27 @@
+﻿{
+    "ResultsByTime": [
+        {
+            "TimePeriod": {
+                "Start": "2026-11-01",
+                "End": "2026-11-10"
+            },
+            "Total": {
+                "AmortizedCost": {
+                    "Amount": "-0.0000000001",
+                    "Unit": "USD"
+                },
+                "NetUnblendedCost": {
+                    "Amount": "-0.0000000001",
+                    "Unit": "USD"
+                },
+                "UnblendedCost": {
+                    "Amount": "-0.0000000001",
+                    "Unit": "USD"
+                }
+            },
+            "Groups": [],
+            "Estimated": true
+        }
+    ],
+    "DimensionValueAttributes": []
+}

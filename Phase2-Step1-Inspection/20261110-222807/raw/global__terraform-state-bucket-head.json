@@ -1,0 +1,5 @@
+﻿{
+    "BucketArn": "arn:aws:s3:::streamingapp-tfstate-8a4b578417838a617bba947a4f",
+    "BucketRegion": "ap-southeast-2",
+    "AccessPointAlias": false
+}
