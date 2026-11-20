@@ -49,3 +49,5 @@ terraform.rc
 
 # Sonarcube
 .scannerwork/
+
+*.rst
