@@ -1,7 +1,7 @@
 
 locals {
   staging_media_allowed_origins = [
-      "https://staging.env.com"
+    "http://k8s-streamin-streamin-cbc22744a7-1796419154.ap-southeast-2.elb.amazonaws.com"
   ]
 }
 
