@@ -20,7 +20,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: {{ $name }}
-          image: "{{ $.Values.image.registry }}/{{ $service.repository }}:{{ $.Values.image.tag }}"
+          image: "{{ required "Set image.registry" $.Values.image.registry }}/{{ $service.repository }}:{{ required "Set image.tag" $.Values.image.tag }}{{ with $service.digest }}@{{ . }}{{ end }}"
           imagePullPolicy: {{ $.Values.image.pullPolicy }}
           ports:
             - name: http
@@ -43,7 +43,7 @@ spec:
             - name: AWS_REGION
               value: {{ $.Values.app.awsRegion | quote }}
             - name: AWS_S3_BUCKET
-              value: {{ $.Values.app.s3Bucket | quote }}
+              value: {{ required "Set app.s3Bucket" $.Values.app.s3Bucket | quote }}
             - name: AWS_CDN_URL
               value: ""
             - name: STREAMING_PUBLIC_URL

@@ -18,7 +18,6 @@ rbac:
     create: true
     name: cluster-autoscaler
     annotations:
-      eks.amazonaws.com/role-arn: arn:aws:iam::175200623108:role/streamingapp-capstone-dev-autoscaler
       eks.amazonaws.com/sts-regional-endpoints: '"true"'
 
 extraArgs:

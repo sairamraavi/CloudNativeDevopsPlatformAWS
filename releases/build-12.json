@@ -1,0 +1,13 @@
+{
+  "commit": "6623aab63dcf49f657a3aa3383432c0a30dc0021",
+  "build": 12,
+  "tag": "6623aab63dcf-12",
+  "platform": "linux/amd64",
+  "images": {
+    "admin": "391623253488.dkr.ecr.ap-south-1.amazonaws.com/streamingapp-capstone-admin@sha256:b3dc84dbf5f5cf12c25bd73d238176db8a318a2df0e9b61d197768ef6b1753bf",
+    "auth": "391623253488.dkr.ecr.ap-south-1.amazonaws.com/streamingapp-capstone-auth@sha256:f1b570a7e661959abc03a436a8c490f88643b407c45e09eaa8140fc5c36caadb",
+    "chat": "391623253488.dkr.ecr.ap-south-1.amazonaws.com/streamingapp-capstone-chat@sha256:488e2609b950e61cb4be0b8b3236564b27f4ea6b579fa6a548e9d7a1deeccdc5",
+    "frontend": "391623253488.dkr.ecr.ap-south-1.amazonaws.com/streamingapp-capstone-frontend@sha256:3a9d40d983e2c2082241f51759df37a45e30cfe36812bd4401127f18af8889b6",
+    "streaming": "391623253488.dkr.ecr.ap-south-1.amazonaws.com/streamingapp-capstone-streaming@sha256:c30d04841b314f8d963854b424e9b8f271877ed52f133c928db4895059020f86"
+  }
+}

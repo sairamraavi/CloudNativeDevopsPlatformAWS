@@ -7,8 +7,7 @@ Jenkins controller on an Ubuntu Server EC2 instance for the
 CloudNativeDevopsPlatformAWS capstone project.
 
 The playbook is designed to be integrated with the Terraform
-infrastructure provisioning workflow. Terraform is being developed
-separately, so the EC2 inventory must be completed before deployment.
+infrastructure provisioning workflow. Terraform supplies the EC2 address through its dev outputs.
 
 ## Repository Structure
 
@@ -39,8 +38,7 @@ separately, so the EC2 inventory must be completed before deployment.
 
 ## Inventory Configuration
 
-Replace the development inventory placeholder with the actual
-reachable EC2 address:
+Export CAPSTONE_JENKINS_IP from the current dev Terraform output. The inventory reads this variable:
 
 `Ansible/inventories/dev/hosts.yml`
 
@@ -87,10 +85,9 @@ installed on a target EC2 instance.
 
 ## Deployment Status
 
-The initial role structure and playbook syntax have been validated
-locally. Terraform integration, real EC2 connectivity, package
-installation, service verification, and end-to-end Jenkins pipeline
-testing remain pending.
+**Implemented and verified in dev.** The playbook also configures nginx, CloudWatch Agent and cloudflared. Verify SSH host identity before the first run. Run the [host setup and service-user checks](../Docs/setup-process.md) in steps 19–25. The Docker check can return an empty list with exit code zero. STS should identify the EC2 role. A recorded playbook completed with zero unreachable and failed hosts.
+
+![Ansible installation result on the Jenkins EC2 host](../Docs/screenshots/eks/40-ansible-jenkins-installation.png)
 
 ## Security Notes
 

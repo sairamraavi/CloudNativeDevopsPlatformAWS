@@ -12,7 +12,7 @@ const connectDB = async () => {
       console.log('[admin/db] MongoDB connection established');
     }
   } catch (error) {
-    console.error('MongoDB connection error:', error);
+    console.error('MongoDB connection failed', { code: Number.isInteger(error?.code) ? error.code : 'unknown' });
     process.exit(1);
   }
 };

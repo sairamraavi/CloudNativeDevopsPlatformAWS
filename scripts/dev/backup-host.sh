@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Back up Jenkins + SonarQube on the EC2 host; run as root over authenticated SSH.
+set -Eeuo pipefail
+umask 077
+dest=${1:?Backup destination required}
+case "$dest" in /var/tmp/capstone-backup-*) ;; *) echo 'Unsafe backup destination' >&2; exit 2;; esac
+mkdir -p -m 700 "$dest"
+chmod 700 "$dest"
+log() { printf '[backup] %s\n' "$*" >&2; }
+error() { local rc=$?; log "ERROR (exit $rc) near line $1: $2"; exit "$rc"; }
+trap 'error "$LINENO" "$BASH_COMMAND"' ERR
+
+log 'Checking required files and services before stopping CI...'
+test -d /opt/capstone-sonarqube || { log 'Missing /opt/capstone-sonarqube'; exit 1; }
+cd /opt/capstone-sonarqube
+test -s /var/lib/jenkins/jobs/streamingapp-dev/config.xml || { log 'Missing Jenkins streamingapp-dev job config'; exit 1; }
+test -s /etc/cloudflared/token || { log 'Missing Cloudflare token'; exit 1; }
+docker compose exec -T db pg_isready -U sonar -d sonar </dev/null >/dev/null || { log 'SonarQube database is not ready'; exit 1; }
+
+resume() {
+  local rc=$?
+  trap - EXIT ERR
+  log 'Restarting Jenkins and SonarQube...'
+  docker compose start sonarqube </dev/null || rc=1
+  systemctl start jenkins || rc=1
+  if [ "$rc" -eq 0 ]; then log 'Backup and CI restart completed'; else log "Backup interrupted or restart failed (exit $rc)"; fi
+  exit "$rc"
+}
+trap resume EXIT
+log 'Stopping Jenkins and SonarQube for consistent backup...'
+systemctl stop jenkins
+docker compose stop sonarqube </dev/null
+
+log 'Archiving Jenkins home...'
+tar -C /var/lib -czf "$dest/jenkins-home.tar.gz" jenkins
+log 'Dumping SonarQube PostgreSQL database...'
+docker compose exec -T db pg_dump -Fc -U sonar sonar </dev/null > "$dest/sonarqube.dump"
+docker compose exec -T db pg_restore -l < "$dest/sonarqube.dump" >/dev/null
+log 'Archiving SonarQube extensions...'
+docker compose run --rm -T --no-deps --entrypoint tar sonarqube -C /opt/sonarqube/extensions -czf - . </dev/null > "$dest/sonarqube-extensions.tar.gz"
+log 'Archiving private host configuration...'
+tar -C / -czf "$dest/host-private-config.tar.gz" etc/cloudflared/token opt/capstone-sonarqube/compose.yaml opt/capstone-sonarqube/.env
+log 'Generating and validating checksum file...'
+(cd "$dest" && sha256sum jenkins-home.tar.gz sonarqube.dump sonarqube-extensions.tar.gz host-private-config.tar.gz > SHA256SUMS && sha256sum -c SHA256SUMS)
+for f in SHA256SUMS jenkins-home.tar.gz sonarqube.dump sonarqube-extensions.tar.gz host-private-config.tar.gz; do
+  test -s "$dest/$f" || { log "Missing or empty artifact: $f"; exit 1; }
+done
+chown -R ubuntu:ubuntu "$dest"
+log 'Remote backup verified and ready for secure copy.'

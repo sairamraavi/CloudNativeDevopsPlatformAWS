@@ -12,7 +12,7 @@ const connectDB = async () => {
 
     console.log('MongoDB Connected Successfully');
   } catch (error) {
-    console.error('MongoDB Connection Error:', error);
+    console.error('MongoDB connection failed', { code: Number.isInteger(error?.code) ? error.code : 'unknown' });
     process.exit(1);
   }
 };
@@ -20,7 +20,7 @@ const connectDB = async () => {
 connectDB();
 
 const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'DB ERROR: '));
+db.on('error', () => console.error('MongoDB connection error'));
 db.once('open', () => console.log('DB connection established'));
 
 module.exports = { db, mongoose };

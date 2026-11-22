@@ -1,44 +1,55 @@
+variable "application_secret_arn" {
+  description = "Exact ARN of the persistent staging application secret."
+  type        = string
 
-data "aws_iam_policy_document" "external_secrets_trust" {
+  validation {
+    condition = can(regex(
+      "^arn:[^:]+:secretsmanager:[^:]+:[0-9]{12}:secret:.+$",
+      var.application_secret_arn
+    ))
+    error_message = "Provide the complete Secrets Manager secret ARN."
+  }
+}
+
+data "aws_iam_policy_document" "secret_reader_trust" {
   statement {
     effect  = "Allow"
-    actions = ["sts:AssumeRole", "sts:TagSession"]
+    actions = ["sts:AssumeRoleWithWebIdentity"]
 
     principals {
-      type        = "Service"
-      identifiers = ["pods.eks.amazonaws.com"]
+      type        = "Federated"
+      identifiers = [module.eks.oidc_provider_arn]
     }
 
     condition {
       test     = "StringEquals"
-      variable = "aws:RequestTag/kubernetes-namespace"
-      values   = ["external-secrets"]
+      variable = "${local.application_oidc_host}:aud"
+      values   = ["sts.amazonaws.com"]
     }
 
     condition {
       test     = "StringEquals"
-      variable = "aws:RequestTag/kubernetes-service-account"
-      values   = ["external-secrets"]
+      variable = "${local.application_oidc_host}:sub"
+      values = [
+        "system:serviceaccount:${local.application_namespace}:streamingapp-secret-reader"
+      ]
     }
   }
 }
 
-resource "aws_iam_role" "external_secrets" {
-  name               = "streamingapp-capstone-staging-external-secrets"
-  description        = "External Secrets Operator Pod Identity role."
-  assume_role_policy = data.aws_iam_policy_document.external_secrets_trust.json
+resource "aws_iam_role" "secret_reader" {
+  name               = "streamingapp-capstone-staging-secret-reader"
+  description        = "Read the staging application secret through IRSA."
+  assume_role_policy = data.aws_iam_policy_document.secret_reader_trust.json
 
   tags = {
-    Project     = "streamingapp-capstone"
-    Environment = "staging"
-    ManagedBy   = "Terraform"
-    Purpose     = "External Secrets Operator Pod Identity"
+    Service = "external-secrets"
   }
 }
 
-data "aws_iam_policy_document" "external_secrets" {
+data "aws_iam_policy_document" "secret_reader_permissions" {
   statement {
-    sid    = "ReadStagingApplicationSecret"
+    sid    = "ReadApplicationSecret"
     effect = "Allow"
 
     actions = [
@@ -46,21 +57,17 @@ data "aws_iam_policy_document" "external_secrets" {
       "secretsmanager:DescribeSecret",
     ]
 
-    resources = [
-      aws_secretsmanager_secret.application.arn,
-    ]
+    resources = [var.application_secret_arn]
   }
 }
 
-resource "aws_iam_role_policy" "external_secrets" {
-  name   = "read-staging-application-secret"
-  role   = aws_iam_role.external_secrets.id
-  policy = data.aws_iam_policy_document.external_secrets.json
+resource "aws_iam_role_policy" "secret_reader" {
+  name   = "read-application-secret"
+  role   = aws_iam_role.secret_reader.id
+  policy = data.aws_iam_policy_document.secret_reader_permissions.json
 }
 
-resource "aws_eks_pod_identity_association" "external_secrets" {
-  cluster_name    = module.eks.cluster_name
-  namespace       = "external-secrets"
-  service_account = "external-secrets"
-  role_arn        = aws_iam_role.external_secrets.arn
+output "secret_reader_role_arn" {
+  description = "Role ARN for the application secret-reader service account."
+  value       = aws_iam_role.secret_reader.arn
 }

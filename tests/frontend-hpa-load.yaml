@@ -13,7 +13,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: load
-          image: 175200623108.dkr.ecr.ap-south-1.amazonaws.com/streamingapp-capstone-auth:05b5902e19e7-20261023204946
+          image: node:24-alpine
           command: ["node", "-e"]
           args:
             - |
