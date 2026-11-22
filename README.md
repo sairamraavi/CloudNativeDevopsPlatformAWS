@@ -221,7 +221,7 @@ Production: authorized operator approves → Helm promotes staging-tested images
 
 The original branch model associates `feature/*` with development, `develop` with staging and `main` with approved production releases. The documented Jenkins job, however, deploys dev and supports approved promotion through staging to production; the actual SCM branch and deployment switches must be checked in the configured Jenkins job. **Branch names alone do not automatically enforce an environment deployment.** See [release delivery and blockers](Docs/delivery.md).
 
-### Staging deployment verified
+## Staging deployment verified
 
 After the earlier database login failure described above, Jenkins build **#22** promoted release `96a8a19cf9f4-22` to staging. All five services had a ready replica, and each ran the image digest selected for that release. The featured-video API returned HTTP 200. We also verified playback through `staging.sairamraavi.com` and confirmed admin access after signing in again.
 
@@ -229,13 +229,43 @@ After the earlier database login failure described above, Jenkins build **#22** 
 
 ![Video playback on the staging HTTPS website](Docs/evidence/staging-03-https-playback.png)
 
-### Production installation and playback verified
+### Staging evidences
+
+![alt text](Docs/evidence/deployment/alb_s3_cloudwatch.png)
+![alt text](Docs/evidence/deployment/api.png)
+![alt text](Docs/evidence/deployment/app-admin-video.png)
+![alt text](Docs/evidence/deployment/app-video_chat.png)
+![alt text](Docs/evidence/deployment/application.png)
+![alt text](Docs/evidence/deployment/cloudwatch.png)
+![alt text](Docs/evidence/deployment/config1.png)
+![alt text](Docs/evidence/deployment/ecr_alb_s3.png)
+![alt text](Docs/evidence/deployment/ecr_alb.png)
+![alt text](Docs/evidence/deployment/eks_cloudwatch.png)
+![alt text](Docs/evidence/deployment/eks.png)
+
+## Production installation and playback verified
 
 Two EKS workers were Ready across the Mumbai availability zones. The first production Helm installation ran all five image digests from staging build **#22**. After registering a production user and granting the application admin role, we tested upload and playback on the production hostname.
 
 ![Production EKS workers ready in two availability zones](Docs/evidence/prod-01-eks-foundation.png)
 
 ![Video playback through the production HTTPS hostname](Docs/evidence/prod-03-https-playback.png)
+
+### Production evidence 
+
+![alt text](Docs/evidence/deployment/app-dashboard.png)
+![alt text](Docs/evidence/deployment/app-profile.png)
+![alt text](Docs/evidence/deployment/gateway_route_jenkins.png)
+![alt text](Docs/evidence/deployment/helm.png)
+![alt text](Docs/evidence/deployment/jenkins_ecr.png)
+![alt text](Docs/evidence/deployment/jenkins_service.png)
+![alt text](Docs/evidence/deployment/pod_alb_ebs_eks.png)
+![alt text](Docs/evidence/deployment/secret-mgr_cloudwatch-log.png)
+![alt text](Docs/evidence/deployment/subnet_route1.png)
+![alt text](Docs/evidence/deployment/subnet_route2.png)
+![alt text](Docs/evidence/deployment/subnet_route3.png)
+![alt text](Docs/evidence/deployment/vpc_subnets_gateway.png)
+
 
 #### Jenkins-approved production release
 
