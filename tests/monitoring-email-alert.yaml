@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: capstone-email-test
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: capstone.email.test
+      rules:
+        - alert: CapstoneEmailDeliveryTest
+          expr: vector(0) == 1
+          for: 1m
+          labels:
+            severity: warning
+            namespace: monitoring
+            project: streamingapp-capstone
+          annotations:
+            summary: "Capstone monitoring email delivery test"
+            description: "Synthetic test of Prometheus, Alertmanager, and SES. No application failure has occurred."

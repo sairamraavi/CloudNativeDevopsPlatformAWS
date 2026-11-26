@@ -1,0 +1,16 @@
+node_modules
+build
+npm-debug.log
+*.log
+coverage
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+**/*.pem
+**/*.key
+.aws
+.git
+.DS_Store

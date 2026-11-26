@@ -1,0 +1,90 @@
+image:
+  registry: ""
+  tag: ""
+  pullPolicy: IfNotPresent
+
+frontend:
+  repository: streamingapp-capstone-frontend
+  tag: ""
+  replicas: 1
+  port: 80
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+backend:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+services:
+  auth:
+    repository: streamingapp-capstone-auth
+    serviceAccountName: streamingapp-auth
+    roleArn: ""
+    port: 3001
+    healthPath: /health
+  streaming:
+    repository: streamingapp-capstone-streaming
+    serviceAccountName: streamingapp-streaming
+    roleArn: ""
+    port: 3002
+    healthPath: /api/health
+  admin:
+    repository: streamingapp-capstone-admin
+    serviceAccountName: streamingapp-admin
+    roleArn: ""
+    port: 3003
+    healthPath: /api/health
+  chat:
+    repository: streamingapp-capstone-chat
+    serviceAccountName: streamingapp-chat
+    roleArn: ""
+    port: 3004
+    healthPath: /api/health
+
+mongodb:
+  enabled: false
+  image: mongo:6
+  port: 27017
+  storageSize: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
+app:
+  secretName: streamingapp-application
+  clientUrls: https://streaming.sairamraavi.com
+  streamingPublicUrl: https://streaming.sairamraavi.com
+  awsRegion: ap-south-1
+  s3Bucket: ""
+
+ingress:
+  enabled: false
+  className: alb
+  host: streaming.sairamraavi.com
+  certificateArn: ""
+
+autoscaling:
+  enabled: true
+  workloads:
+    - auth
+    - streaming
+    - admin
+    - frontend
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70

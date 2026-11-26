@@ -1,0 +1,64 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: streamingapp
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: {{ required "Set ingress.certificateArn when enabling ingress" .Values.ingress.certificateArn | quote }}
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/success-codes: "200"
+    alb.ingress.kubernetes.io/load-balancer-attributes: {{ .Values.ingress.loadBalancerAttributes | default "idle_timeout.timeout_seconds=120" | quote }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ required "Set ingress.host when enabling ingress" .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /api/admin
+            pathType: Prefix
+            backend:
+              service:
+                name: admin
+                port:
+                  number: 3003
+          - path: /api/chat
+            pathType: Prefix
+            backend:
+              service:
+                name: chat
+                port:
+                  number: 3004
+          - path: /socket.io
+            pathType: Prefix
+            backend:
+              service:
+                name: chat
+                port:
+                  number: 3004
+          - path: /api/streaming
+            pathType: Prefix
+            backend:
+              service:
+                name: streaming
+                port:
+                  number: 3002
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 3001
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+{{- end }}

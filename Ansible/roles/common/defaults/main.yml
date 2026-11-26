@@ -1,0 +1,10 @@
+---
+common_packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - git
+  - unzip
+  - wget
+  - apt-transport-https
+  - fontconfig

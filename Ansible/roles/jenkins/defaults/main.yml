@@ -1,0 +1,4 @@
+---
+jenkins_service_name: jenkins
+jenkins_repository_key_url: https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+jenkins_repository_url: https://pkg.jenkins.io/debian-stable
