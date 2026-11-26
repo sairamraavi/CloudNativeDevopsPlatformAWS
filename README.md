@@ -1,6 +1,6 @@
 # Cloud Native DevOps Platform on AWS | StreamingApp Capstone
 
-**Team:-**
+**Team members**
 -   Ayushi Khare
 -   Nilofer Siddiquee
 -   Sairam Raavi
