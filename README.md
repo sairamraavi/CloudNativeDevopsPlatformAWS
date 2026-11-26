@@ -1,5 +1,13 @@
 # Cloud Native DevOps Platform on AWS | StreamingApp Capstone
 
+**Team:-**
+-   Ayushi Khare
+-   Nilofer Siddiquee
+-   Sairam Raavi
+-   Prashanth Shetty
+
+
+
 **End-to-end DevOps engineering capstone:** a five-service streaming platform containerized with Docker, deployed to private Amazon EKS worker nodes using Terraform and Helm, released through Jenkins CI/CD, and operated with monitoring, security controls and recovery procedures.
 
 [![AWS](https://img.shields.io/badge/Cloud-AWS%20ap--south--1-orange)](https://aws.amazon.com/eks/) [![Kubernetes](https://img.shields.io/badge/Orchestration-Amazon%20EKS-blue)](https://aws.amazon.com/eks/) [![IaC](https://img.shields.io/badge/IaC-Terraform-purple)](Terraform/) [![CI/CD](https://img.shields.io/badge/CI%2FCD-Jenkins-red)](Jenkinsfile) [![Documentation](https://img.shields.io/badge/Documentation-Runbooks-green)](Docs/setup-process.md)
